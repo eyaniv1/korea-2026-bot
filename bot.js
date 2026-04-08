@@ -1,11 +1,13 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const Anthropic = require('@anthropic-ai/sdk');
+const Groq = require('groq-sdk');
 const cron = require('node-cron');
 const { TRIP_CONTEXT } = require('./trip-context');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Store conversation history per chat (group or private)
 const conversations = new Map();
@@ -231,6 +233,53 @@ bot.on('photo', async (ctx) => {
   } catch (err) {
     console.error('Photo error:', err.message);
     await ctx.reply('Had trouble with that photo. Try again or describe what you need.');
+  }
+});
+
+// Handle voice messages
+bot.on('voice', async (ctx) => {
+  trackGroup(ctx);
+  const chatId = ctx.chat.id;
+  const userName = ctx.from.first_name || 'Someone';
+
+  try {
+    await ctx.sendChatAction('typing');
+
+    // Download the voice file
+    const file = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
+    const response = await fetch(file.href);
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    // Create a File object for Groq
+    const audioFile = new File([buffer], 'voice.ogg', { type: 'audio/ogg' });
+
+    // Transcribe with Groq Whisper
+    const transcription = await groq.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-large-v3',
+    });
+
+    const text = transcription.text;
+    if (!text || text.trim().length === 0) {
+      return ctx.reply('Couldn\'t make out what was said. Try again?');
+    }
+
+    // Show the transcription so everyone can read it
+    await ctx.reply(`🎤 *${userName}:* ${text}`, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(`🎤 ${userName}: ${text}`)
+    );
+
+    // Send to Claude
+    addMessage(chatId, 'user', `${userName} (voice message): ${text}`);
+    const reply = await askClaude(chatId, getHistory(chatId));
+    addMessage(chatId, 'assistant', reply);
+
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
+  } catch (err) {
+    console.error('Voice error:', err.message);
+    await ctx.reply('Had trouble with that voice message. Try typing or sending again.');
   }
 });
 
