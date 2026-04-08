@@ -14,6 +14,9 @@ const MAX_HISTORY = 50;
 // Track active group chat IDs so we can send proactive messages
 const activeGroups = new Set();
 
+// Store last known location per chat
+const lastLocations = new Map();
+
 // Admin config — Eran's Telegram user ID (set on first /admin command)
 const ADMIN_NAME = 'Eran';
 const adminUserIds = new Set();
@@ -40,13 +43,20 @@ function addMessage(chatId, role, content) {
   }
 }
 
-// Build system prompt with runtime tips
-function buildSystemPrompt() {
+// Build system prompt with runtime tips and location
+function buildSystemPrompt(chatId) {
   let prompt = TRIP_CONTEXT;
   if (settings.tips.length > 0) {
     prompt += `\n\n## Curated Tips from Eran\n`;
     prompt += settings.tips.map((t, i) => `${i + 1}. ${t}`).join('\n');
     prompt += `\nUse these tips when relevant to questions about food, activities, or places.`;
+  }
+  const loc = lastLocations.get(chatId);
+  if (loc) {
+    prompt += `\n\n## Current Location\n`;
+    prompt += `Last shared by ${loc.from} at ${loc.time}:\n`;
+    prompt += `Latitude: ${loc.latitude}, Longitude: ${loc.longitude}\n`;
+    prompt += `Use this location when answering questions about nearby places, directions, restaurants, etc. Search the web for places near these coordinates when relevant.`;
   }
   return prompt;
 }
@@ -56,7 +66,7 @@ async function askClaude(chatId, messages) {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
-    system: buildSystemPrompt(),
+    system: buildSystemPrompt(chatId),
     tools: [{ type: 'web_search_20250305' }],
     messages,
   });
@@ -221,6 +231,32 @@ bot.on('photo', async (ctx) => {
   } catch (err) {
     console.error('Photo error:', err.message);
     await ctx.reply('Had trouble with that photo. Try again or describe what you need.');
+  }
+});
+
+// Handle location shares
+bot.on('location', async (ctx) => {
+  trackGroup(ctx);
+  const chatId = ctx.chat.id;
+  const userName = ctx.from.first_name || 'Someone';
+  const { latitude, longitude } = ctx.message.location;
+
+  lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
+
+  addMessage(chatId, 'user',
+    `${userName} shared their location: latitude ${latitude}, longitude ${longitude}. ` +
+    `Acknowledge briefly that you know where they are. If there was a recent question about nearby places, answer it using this location.`
+  );
+
+  try {
+    await ctx.sendChatAction('typing');
+    const reply = await askClaude(chatId, getHistory(chatId));
+    addMessage(chatId, 'assistant', reply);
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
+  } catch (err) {
+    console.error('Location error:', err.message);
   }
 });
 
