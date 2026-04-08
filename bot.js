@@ -65,12 +65,22 @@ function buildSystemPrompt(chatId) {
 
 // Call Claude with web search tool support
 async function askClaude(chatId, messages) {
+  // Merge consecutive same-role messages to prevent API errors
+  const cleaned = [];
+  for (const msg of messages) {
+    if (cleaned.length > 0 && cleaned[cleaned.length - 1].role === msg.role) {
+      const prev = cleaned[cleaned.length - 1];
+      prev.content = (typeof prev.content === 'string' ? prev.content : '') + '\n' + (typeof msg.content === 'string' ? msg.content : '');
+    } else {
+      cleaned.push({ ...msg });
+    }
+  }
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     system: buildSystemPrompt(chatId),
     tools: [{ type: 'web_search_20250305' }],
-    messages,
+    messages: cleaned,
   });
 
   let reply = '';
@@ -189,6 +199,10 @@ bot.on('text', async (ctx) => {
     );
   } catch (err) {
     console.error('Error:', err.message);
+    const history = getHistory(chatId);
+    if (history.length > 0 && history[history.length - 1].role === 'user') {
+      history.pop();
+    }
     await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
   }
 });
@@ -232,6 +246,10 @@ bot.on('photo', async (ctx) => {
     );
   } catch (err) {
     console.error('Photo error:', err.message);
+    const history = getHistory(chatId);
+    if (history.length > 0 && history[history.length - 1].role === 'user') {
+      history.pop();
+    }
     await ctx.reply('Had trouble with that photo. Try again or describe what you need.');
   }
 });
@@ -278,7 +296,12 @@ bot.on('voice', async (ctx) => {
       ctx.reply(reply)
     );
   } catch (err) {
-    console.error('Voice error:', err.message);
+    console.error('Voice error:', err.message, err.status || '', err.error || '');
+    // Remove dangling user message to prevent consecutive user messages breaking future calls
+    const history = getHistory(chatId);
+    if (history.length > 0 && history[history.length - 1].role === 'user') {
+      history.pop();
+    }
     await ctx.reply('Had trouble with that voice message. Try typing or sending again.');
   }
 });
