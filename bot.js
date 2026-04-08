@@ -20,10 +20,30 @@ function getHistory(chatId) {
 function addMessage(chatId, role, content) {
   const history = getHistory(chatId);
   history.push({ role, content });
-  // Trim to keep memory bounded
   if (history.length > MAX_HISTORY) {
     history.splice(0, history.length - MAX_HISTORY);
   }
+}
+
+// Call Claude with web search tool support
+async function askClaude(chatId, messages) {
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    system: TRIP_CONTEXT,
+    tools: [{ type: 'web_search_20250305' }],
+    messages,
+  });
+
+  // Collect all text blocks from the response (may include search results inline)
+  let reply = '';
+  for (const block of response.content) {
+    if (block.type === 'text') {
+      reply += block.text;
+    }
+  }
+
+  return reply;
 }
 
 // Handle text messages
@@ -37,28 +57,14 @@ bot.on('text', async (ctx) => {
   try {
     await ctx.sendChatAction('typing');
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: TRIP_CONTEXT,
-      messages: getHistory(chatId),
-    });
-
-    const reply = response.content[0].text;
+    const reply = await askClaude(chatId, getHistory(chatId));
     addMessage(chatId, 'assistant', reply);
 
-    await ctx.reply(reply, { parse_mode: 'Markdown' });
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
   } catch (err) {
     console.error('Error:', err.message);
-    // Retry without Markdown if parsing failed
-    if (err.message?.includes('parse')) {
-      const history = getHistory(chatId);
-      const lastAssistant = history[history.length - 1];
-      if (lastAssistant?.role === 'assistant') {
-        await ctx.reply(lastAssistant.content);
-        return;
-      }
-    }
     await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
   }
 });
@@ -81,7 +87,6 @@ bot.on('photo', async (ctx) => {
     const buffer = await response.arrayBuffer();
     const base64 = Buffer.from(buffer).toString('base64');
 
-    // Determine media type from URL
     const url = fileLink.href;
     const mediaType = url.includes('.png') ? 'image/png' : 'image/jpeg';
 
@@ -94,17 +99,12 @@ bot.on('photo', async (ctx) => {
       },
     ]);
 
-    const aiResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: TRIP_CONTEXT,
-      messages: getHistory(chatId),
-    });
-
-    const reply = aiResponse.content[0].text;
+    const reply = await askClaude(chatId, getHistory(chatId));
     addMessage(chatId, 'assistant', reply);
 
-    await ctx.reply(reply, { parse_mode: 'Markdown' });
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
   } catch (err) {
     console.error('Photo error:', err.message);
     await ctx.reply('Had trouble with that photo. Try again or describe what you need.');
@@ -121,7 +121,8 @@ bot.start((ctx) => {
     `• Restaurant & activity recommendations\n` +
     `• Directions & transportation\n` +
     `• Translating Korean (send me photos of signs/menus!)\n` +
-    `• Cultural tips & emergency info\n\n` +
+    `• Cultural tips & emergency info\n` +
+    `• 🔍 Live web search for current info\n\n` +
     `Just chat naturally — I know the whole group!`,
     { parse_mode: 'Markdown' }
   );
@@ -134,16 +135,11 @@ bot.command('plan', async (ctx) => {
 
   try {
     await ctx.sendChatAction('typing');
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: TRIP_CONTEXT,
-      messages: getHistory(chatId),
-    });
-
-    const reply = response.content[0].text;
+    const reply = await askClaude(chatId, getHistory(chatId));
     addMessage(chatId, 'assistant', reply);
-    await ctx.reply(reply, { parse_mode: 'Markdown' });
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
   } catch (err) {
     console.error('Plan error:', err.message);
     await ctx.reply('Couldn\'t load the plan. Try asking me directly.');
@@ -162,16 +158,11 @@ bot.command('translate', async (ctx) => {
 
   try {
     await ctx.sendChatAction('typing');
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 512,
-      system: TRIP_CONTEXT,
-      messages: getHistory(chatId),
-    });
-
-    const reply = response.content[0].text;
+    const reply = await askClaude(chatId, getHistory(chatId));
     addMessage(chatId, 'assistant', reply);
-    await ctx.reply(reply, { parse_mode: 'Markdown' });
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
   } catch (err) {
     await ctx.reply('Translation failed. Try again.');
   }
@@ -179,7 +170,7 @@ bot.command('translate', async (ctx) => {
 
 // Launch
 bot.launch();
-console.log('🤖 Korea Trip Bot is running!');
+console.log('🤖 Korea Trip Bot is running! (with web search)');
 
 // Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
