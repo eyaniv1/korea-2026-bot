@@ -107,9 +107,31 @@ function trackGroup(ctx) {
   }
 }
 
+// Check if the bot should respond to this message
+function shouldRespond(ctx) {
+  // Always respond in private chats
+  if (ctx.chat.type === 'private') return true;
+
+  // Respond if replied to the bot's message
+  if (ctx.message.reply_to_message?.from?.id === bot.botInfo?.id) return true;
+
+  // Respond if bot is mentioned by name or username
+  const text = (ctx.message.text || ctx.message.caption || '').toLowerCase();
+  const botName = (bot.botInfo?.first_name || '').toLowerCase();
+  const botUsername = (bot.botInfo?.username || '').toLowerCase();
+  if (botName && text.includes(botName)) return true;
+  if (botUsername && text.includes(`@${botUsername}`)) return true;
+  if (text.includes('bot,') || text.includes('bot ') || text === 'bot') return true;
+
+  return false;
+}
+
 // Handle text messages
 bot.on('text', async (ctx) => {
   trackGroup(ctx);
+
+  if (!shouldRespond(ctx)) return;
+
   const chatId = ctx.chat.id;
   const userName = ctx.from.first_name || 'Someone';
   const userMessage = `${userName}: ${ctx.message.text}`;
@@ -132,6 +154,8 @@ bot.on('text', async (ctx) => {
 // Handle photos (signs, menus, etc.)
 bot.on('photo', async (ctx) => {
   trackGroup(ctx);
+
+  if (!shouldRespond(ctx)) return;
   const chatId = ctx.chat.id;
   const userName = ctx.from.first_name || 'Someone';
   const caption = ctx.message.caption || 'What is this?';
