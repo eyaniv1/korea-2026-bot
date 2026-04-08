@@ -14,6 +14,17 @@ const MAX_HISTORY = 50;
 // Track active group chat IDs so we can send proactive messages
 const activeGroups = new Set();
 
+// Admin config — Eran's Telegram user ID (set on first /admin command)
+const ADMIN_NAME = 'Eran';
+const adminUserIds = new Set();
+
+// Runtime settings (configurable via Telegram commands)
+const settings = {
+  responseMode: 'mentions', // 'mentions' = only when addressed, 'all' = respond to everything, 'commands' = only slash commands
+  scheduleEnabled: true,
+  tips: [], // curated tips added on the fly
+};
+
 function getHistory(chatId) {
   if (!conversations.has(chatId)) {
     conversations.set(chatId, []);
@@ -29,12 +40,23 @@ function addMessage(chatId, role, content) {
   }
 }
 
+// Build system prompt with runtime tips
+function buildSystemPrompt() {
+  let prompt = TRIP_CONTEXT;
+  if (settings.tips.length > 0) {
+    prompt += `\n\n## Curated Tips from Eran\n`;
+    prompt += settings.tips.map((t, i) => `${i + 1}. ${t}`).join('\n');
+    prompt += `\nUse these tips when relevant to questions about food, activities, or places.`;
+  }
+  return prompt;
+}
+
 // Call Claude with web search tool support
 async function askClaude(chatId, messages) {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
-    system: TRIP_CONTEXT,
+    system: buildSystemPrompt(),
     tools: [{ type: 'web_search_20250305' }],
     messages,
   });
@@ -69,6 +91,7 @@ async function sendToAllGroups(prompt) {
 
 // Morning briefing at 8:00 AM KST (= 23:00 UTC previous day)
 cron.schedule('0 23 * * *', () => {
+  if (!settings.scheduleEnabled) return;
   const today = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Seoul', weekday: 'long', month: 'long', day: 'numeric' });
   sendToAllGroups(
     `[SYSTEM - Morning Briefing] It's 8:00 AM in Korea, ${today}. ` +
@@ -80,6 +103,7 @@ cron.schedule('0 23 * * *', () => {
 
 // Reminder check at 8:00 PM KST (= 11:00 UTC) — remind about tomorrow
 cron.schedule('0 11 * * *', () => {
+  if (!settings.scheduleEnabled) return;
   const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString('en-US', { timeZone: 'Asia/Seoul', weekday: 'long', month: 'long', day: 'numeric' });
   sendToAllGroups(
     `[SYSTEM - Evening Reminder] It's 8:00 PM in Korea. ` +
@@ -91,6 +115,7 @@ cron.schedule('0 11 * * *', () => {
 
 // Late evening prompt at 10:00 PM KST (= 13:00 UTC) — nudge to share photos
 cron.schedule('0 13 * * *', () => {
+  if (!settings.scheduleEnabled) return;
   sendToAllGroups(
     `[SYSTEM - Evening Prompt] It's 10:00 PM in Korea. ` +
     `Send a short, casual message encouraging the group to share their favorite photo or moment from today. ` +
@@ -112,10 +137,15 @@ function shouldRespond(ctx) {
   // Always respond in private chats
   if (ctx.chat.type === 'private') return true;
 
-  // Respond if replied to the bot's message
+  // Commands-only mode
+  if (settings.responseMode === 'commands') return false;
+
+  // Chatty mode — respond to everything
+  if (settings.responseMode === 'all') return true;
+
+  // Default (mentions mode) — respond if addressed
   if (ctx.message.reply_to_message?.from?.id === bot.botInfo?.id) return true;
 
-  // Respond if bot is mentioned by name or username
   const text = (ctx.message.text || ctx.message.caption || '').toLowerCase();
   const botName = (bot.botInfo?.first_name || '').toLowerCase();
   const botUsername = (bot.botInfo?.username || '').toLowerCase();
@@ -192,6 +222,119 @@ bot.on('photo', async (ctx) => {
     console.error('Photo error:', err.message);
     await ctx.reply('Had trouble with that photo. Try again or describe what you need.');
   }
+});
+
+// ===== ADMIN COMMANDS =====
+
+function isAdmin(ctx) {
+  // Allow Eran by first name match, or anyone who has registered via /admin
+  const name = ctx.from.first_name || '';
+  if (name.toLowerCase() === ADMIN_NAME.toLowerCase()) {
+    adminUserIds.add(ctx.from.id);
+    return true;
+  }
+  return adminUserIds.has(ctx.from.id);
+}
+
+// /quiet — only respond to slash commands
+bot.command('quiet', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  settings.responseMode = 'commands';
+  ctx.reply('🤫 Quiet mode — I\'ll only respond to /commands now.');
+});
+
+// /chatty — respond to everything
+bot.command('chatty', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  settings.responseMode = 'all';
+  ctx.reply('🗣️ Chatty mode — I\'ll respond to every message.');
+});
+
+// /normal — respond only when mentioned/replied to (default)
+bot.command('normal', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  settings.responseMode = 'mentions';
+  ctx.reply('👋 Normal mode — I\'ll respond when mentioned or replied to.');
+});
+
+// /schedule on|off
+bot.command('schedule', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  const arg = ctx.message.text.replace('/schedule', '').trim().toLowerCase();
+  if (arg === 'off') {
+    settings.scheduleEnabled = false;
+    ctx.reply('🔕 Scheduled messages disabled (morning briefing, evening reminder, photo prompt).');
+  } else if (arg === 'on') {
+    settings.scheduleEnabled = true;
+    ctx.reply('🔔 Scheduled messages enabled.');
+  } else {
+    ctx.reply(`Scheduled messages are currently: ${settings.scheduleEnabled ? '🔔 ON' : '🔕 OFF'}\nUsage: /schedule on or /schedule off`);
+  }
+});
+
+// /addtip <text> — add a curated tip
+bot.command('addtip', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  const tip = ctx.message.text.replace('/addtip', '').trim();
+  if (!tip) return ctx.reply('Usage: /addtip Try the black bean noodles at Myeongdong Kyoja');
+  settings.tips.push(tip);
+  ctx.reply(`✅ Tip added (#${settings.tips.length}): "${tip}"`);
+});
+
+// /tips — list all curated tips
+bot.command('tips', (ctx) => {
+  trackGroup(ctx);
+  if (settings.tips.length === 0) return ctx.reply('No tips saved yet. Use /addtip to add one.');
+  const list = settings.tips.map((t, i) => `${i + 1}. ${t}`).join('\n');
+  ctx.reply(`📝 *Curated Tips:*\n${list}`, { parse_mode: 'Markdown' });
+});
+
+// /deltip <number> — remove a tip
+bot.command('deltip', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  const num = parseInt(ctx.message.text.replace('/deltip', '').trim());
+  if (!num || num < 1 || num > settings.tips.length) return ctx.reply(`Usage: /deltip <number> (1-${settings.tips.length})`);
+  const removed = settings.tips.splice(num - 1, 1);
+  ctx.reply(`🗑️ Removed tip: "${removed[0]}"`);
+});
+
+// /status — show current bot config
+bot.command('status', (ctx) => {
+  trackGroup(ctx);
+  ctx.reply(
+    `⚙️ *Bot Status*\n` +
+    `• Response mode: ${settings.responseMode}\n` +
+    `• Scheduled messages: ${settings.scheduleEnabled ? 'ON' : 'OFF'}\n` +
+    `• Curated tips: ${settings.tips.length}\n` +
+    `• Active groups: ${activeGroups.size}`,
+    { parse_mode: 'Markdown' }
+  );
+});
+
+// /help — show all commands
+bot.command('help', (ctx) => {
+  trackGroup(ctx);
+  ctx.reply(
+    `*Commands:*\n` +
+    `🗺️ /plan — today's itinerary\n` +
+    `🌐 /translate <text> — translate to Korean\n` +
+    `📝 /tips — show curated tips\n` +
+    `⚙️ /status — bot settings\n\n` +
+    `*Admin (Eran only):*\n` +
+    `/quiet — only respond to commands\n` +
+    `/normal — respond when mentioned (default)\n` +
+    `/chatty — respond to everything\n` +
+    `/schedule on|off — toggle daily messages\n` +
+    `/addtip <text> — add a tip\n` +
+    `/deltip <num> — remove a tip`,
+    { parse_mode: 'Markdown' }
+  );
 });
 
 // Handle /start command
