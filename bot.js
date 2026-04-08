@@ -198,12 +198,12 @@ bot.on('text', async (ctx) => {
       ctx.reply(reply)
     );
   } catch (err) {
-    console.error('Error:', err.message);
+    console.error('Error:', err.status, err.message, err.error);
     const history = getHistory(chatId);
     if (history.length > 0 && history[history.length - 1].role === 'user') {
       history.pop();
     }
-    await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
+    await ctx.reply(`Sorry, I hit a snag: ${err.message || 'unknown error'}`);
   }
 });
 
