@@ -79,7 +79,7 @@ async function askClaude(chatId, messages) {
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4096,
     system: buildSystemPrompt(chatId),
-    tools: [{ type: 'web_search_20250305' }],
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
     messages: cleaned,
   });
 
@@ -203,7 +203,7 @@ bot.on('text', async (ctx) => {
     if (history.length > 0 && history[history.length - 1].role === 'user') {
       history.pop();
     }
-    await ctx.reply(`Sorry, I hit a snag: ${err.message || 'unknown error'}`);
+    await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
   }
 });
 
