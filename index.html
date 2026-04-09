@@ -255,8 +255,10 @@ const MISSING=[
 let currentPage=0;
 const totalPages=DAYS.length+2; // cover + 12 days + missing
 const mapInstances={};
+const mapBounds={};
 
-function gmapsUrl(q){return `https://www.google.com/maps/search/?api=1&query=${q.replace(/\+/g,' ')}+South+Korea`}
+function gmapsUrl(q){return `https://www.google.com/maps/search/${q.replace(/\+/g,'+')}+South+Korea`}
+function extLink(e,url){e.preventDefault();window.open(url,'_blank','noopener');return false}
 function showInfo(key,name){
   document.getElementById('modal-title').textContent=name.replace(/🥾|🚴/g,'').trim();
   document.getElementById('modal-body').textContent=DESC[key]||'No description available.';
@@ -273,10 +275,19 @@ function goPage(idx){
   document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
   const btns=document.querySelectorAll('.nav-btn');
   if(btns[idx])btns[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  // Fix map rendering for newly visible page
+  // Fix map rendering and zoom for newly visible page
   if(idx>0 && idx<=DAYS.length){
     const dayNum=DAYS[idx-1].num;
-    setTimeout(()=>{if(mapInstances[dayNum])mapInstances[dayNum].invalidateSize()},50);
+    setTimeout(()=>{
+      const m=mapInstances[dayNum];
+      if(!m)return;
+      m.invalidateSize();
+      const b=mapBounds[dayNum];
+      if(b){
+        if(b.center)m.setView(b.center,b.zoom);
+        else m.fitBounds(b);
+      }
+    },50);
   }
   window.scrollTo(0,0);
 }
@@ -285,7 +296,16 @@ function switchTab(dayNum,tabName){
   document.querySelectorAll(`[data-day="${dayNum}"] .tab-btn`).forEach(b=>b.classList.toggle('active',b.dataset.tab===tabName));
   document.querySelectorAll(`[data-day="${dayNum}"] .tab-content`).forEach(c=>c.classList.toggle('active',c.dataset.tab===tabName));
   if(tabName==='itinerary'){
-    setTimeout(()=>{if(mapInstances[dayNum])mapInstances[dayNum].invalidateSize()},50);
+    setTimeout(()=>{
+      const m=mapInstances[dayNum];
+      if(!m)return;
+      m.invalidateSize();
+      const b=mapBounds[dayNum];
+      if(b){
+        if(b.center)m.setView(b.center,b.zoom);
+        else m.fitBounds(b);
+      }
+    },50);
   }
 }
 
@@ -348,11 +368,11 @@ function build(){
       const cleanName=p.name.replace(/🥾|🚴/g,'').trim();
       h+=`<div class="poi-item"><div class="poi-num">${p.n}</div><div class="poi-body">
         ${p.time?`<span class="poi-time">${p.time}</span>`:''}
-        <div class="poi-name"><a href="https://www.google.com/search?q=${p.q}" target="_blank">${p.name}</a></div>
+        <div class="poi-name"><a href="https://www.google.com/search?q=${p.q}" onclick="return extLink(event,this.href)">${p.name}</a></div>
         ${badges?`<div class="poi-badges">${badges}</div>`:''}
         <div class="poi-actions">
           <button class="poi-action-btn" onclick="showInfo('${p.key}','${cleanName.replace(/'/g,"\\'")}')">ℹ️ Info</button>
-          <a class="poi-action-btn gmaps" href="${gmapsUrl(p.q)}" target="_blank">📍 Map</a>
+          <a class="poi-action-btn gmaps" href="${gmapsUrl(p.q)}" onclick="return extLink(event,this.href)">📍 Map</a>
         </div></div></div>`;
     });
     h+=`</div></div>`;
@@ -414,8 +434,13 @@ function build(){
       });
       if(pts.length>1){
         L.polyline(pts,{color:'#e74c3c',weight:3,opacity:.6,dashArray:'8,8'}).addTo(m);
-        m.fitBounds(L.latLngBounds(pts).pad(.2));
-      }else if(pts.length===1) m.setView(pts[0],13);
+        const b=L.latLngBounds(pts).pad(.2);
+        mapBounds[day.num]=b;
+        m.fitBounds(b);
+      }else if(pts.length===1){
+        mapBounds[day.num]={center:pts[0],zoom:13};
+        m.setView(pts[0],13);
+      }
     });
   },100);
 }
