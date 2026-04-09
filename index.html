@@ -544,7 +544,7 @@ function initAllMaps() {
   DAYS.forEach(day => {
     // Overview map
     const ov = L.map(`overview-${day.num}`, { zoomControl: true, scrollWheelZoom: false }).setView([36.0, 127.8], 7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OSM © CARTO', maxZoom: 19 }).addTo(ov);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OSM © CARTO', maxZoom: 19 }).addTo(ov);
 
     day.pois.forEach(p => L.marker([p.lat, p.lng], { icon: createOverviewDot() }).addTo(ov));
     if (day.pois.length > 1) {
