@@ -4,92 +4,101 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <title>Korea 2026</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0}
-
-/* Page system */
-.pages-container{display:flex;height:100vh;width:100%;overflow:hidden;transition:transform 0.35s cubic-bezier(.4,0,.2,1)}
-.page{min-width:100%;height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:70px}
+html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0}
+body{padding-bottom:58px;overflow-x:hidden}
 
 /* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#12122aee;backdrop-filter:blur(10px);border-top:1px solid #2a2a4a;display:flex;align-items:center;height:56px;padding:0 6px}
-.bottom-nav .nav-scroll{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1;padding:8px 4px;scrollbar-width:none}
-.bottom-nav .nav-scroll::-webkit-scrollbar{display:none}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#12122aee;backdrop-filter:blur(10px);border-top:1px solid #2a2a4a;display:flex;align-items:center;height:56px;padding:0 4px}
+.nav-scroll{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1;padding:8px 2px;scrollbar-width:none}
+.nav-scroll::-webkit-scrollbar{display:none}
 .nav-btn{padding:6px 11px;border-radius:8px;font-size:12px;color:#aaa;background:#1a1a3a;white-space:nowrap;border:none;cursor:pointer;transition:all .2s;flex-shrink:0}
 .nav-btn.active{background:#e74c3c;color:#fff}
 .nav-btn.seoul{border-bottom:2px solid #3498db}
 .nav-btn.jeju{border-bottom:2px solid #2ecc71}
 .nav-btn.busan{border-bottom:2px solid #e67e22}
 .nav-btn.travel{border-bottom:2px solid #9b59b6}
-.nav-arrow{background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:4px 8px;flex-shrink:0}
-.nav-arrow:active{color:#fff}
+.nav-arrow{background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:4px 6px;flex-shrink:0}
+
+/* Pages - show/hide */
+.page{display:none}
+.page.active{display:block}
+
+/* Cover page */
+.cover{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 58px);text-align:center;padding:40px 20px;background:linear-gradient(160deg,#1a1a3e 0%,#0f0f1a 50%,#1a1a3e 100%)}
+.cover .flag{font-size:80px;margin-bottom:16px}
+.cover h1{font-size:30px;color:#fff;margin-bottom:6px}
+.cover .family{font-size:16px;color:#ccc;margin-bottom:4px}
+.cover .dates{font-size:14px;color:#888;margin-bottom:30px}
+.cover .saying{font-style:italic;color:#f5b041;font-size:15px;max-width:400px;line-height:1.6;margin-bottom:6px}
+.cover .saying-kr{font-size:20px;color:#f5b041;margin-bottom:8px}
+.cover .saying-credit{font-size:12px;color:#666}
+.cover .route{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:30px}
+.cover .rseg{background:#1e1e3a;padding:6px 14px;border-radius:20px;font-size:13px;color:#ccc}
+.cover .rarr{color:#555;font-size:16px;display:flex;align-items:center}
 
 /* Page header */
-.page-header{background:linear-gradient(135deg,#1a1a3e,#0f0f1a);padding:20px 16px 16px;border-bottom:1px solid #2a2a4a}
-.page-header .day-num{display:inline-flex;align-items:center;justify-content:center;background:#e74c3c;color:#fff;width:38px;height:38px;border-radius:10px;font-size:18px;font-weight:bold;margin-right:12px;vertical-align:middle}
-.page-header h2{display:inline;font-size:20px;color:#fff;vertical-align:middle}
-.page-header .sub{color:#888;font-size:13px;margin-top:6px}
+.pg-hdr{background:linear-gradient(135deg,#1a1a3e,#0f0f1a);padding:18px 16px 14px;border-bottom:1px solid #2a2a4a}
+.pg-hdr .dn{display:inline-flex;align-items:center;justify-content:center;background:#e74c3c;color:#fff;width:38px;height:38px;border-radius:10px;font-size:18px;font-weight:bold;margin-right:10px;vertical-align:middle}
+.pg-hdr h2{display:inline;font-size:20px;color:#fff;vertical-align:middle}
+.pg-hdr .sub{color:#888;font-size:13px;margin-top:4px}
+
+/* Tabs */
+.tabs{display:flex;background:#12122a;border-bottom:1px solid #2a2a4a}
+.tab-btn{flex:1;padding:10px 0;text-align:center;font-size:13px;color:#888;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn.active{color:#fff;border-bottom-color:#e74c3c}
+.tab-content{display:none}
+.tab-content.active{display:block}
 
 /* Map */
-.map-wrap{margin:12px;border-radius:12px;overflow:hidden;background:#16163a}
-.map{height:300px;width:100%}
+.map-wrap{margin:10px 12px;border-radius:12px;overflow:hidden;background:#16163a}
+.map{height:280px;width:100%}
 @media(min-width:768px){.map{height:400px}}
 
 /* POI list */
-.poi-list{padding:0 12px}
-.poi-item{display:flex;gap:10px;padding:12px;background:#16163a;border-radius:10px;margin-bottom:8px;align-items:flex-start}
+.poi-list{padding:0 12px 12px}
+.poi-item{display:flex;gap:10px;padding:11px;background:#16163a;border-radius:10px;margin-bottom:7px;align-items:flex-start}
 .poi-num{background:#e74c3c;color:#fff;width:28px;height:28px;min-width:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;margin-top:2px}
 .poi-body{flex:1;min-width:0}
-.poi-time{font-size:11px;color:#888;background:#1e1e4a;display:inline-block;padding:1px 7px;border-radius:3px;margin-bottom:4px}
+.poi-time{font-size:11px;color:#888;background:#1e1e4a;display:inline-block;padding:1px 7px;border-radius:3px;margin-bottom:3px}
 .poi-name{font-size:14px;color:#fff;line-height:1.4}
 .poi-name a{color:#5dade2;text-decoration:none}
-.poi-meta{font-size:12px;color:#aaa;margin-top:3px}
 .poi-badges{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;color:#fff}
-.badge-hike{background:#27ae60}.badge-bike{background:#2980b9}.badge-food{background:#c0392b}.badge-transport{background:#7f8c8d}
-
-/* POI actions row */
+.badge-hike{background:#27ae60}.badge-bike{background:#2980b9}.badge-food{background:#c0392b}
 .poi-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
-.poi-action-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;color:#5dade2;background:#1e1e4a;border:none;cursor:pointer;text-decoration:none;transition:background .2s}
-.poi-action-btn:hover,.poi-action-btn:active{background:#2a2a5a}
+.poi-action-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;color:#5dade2;background:#1e1e4a;border:none;cursor:pointer;text-decoration:none}
 .poi-action-btn.gmaps{color:#4ade80}
 
-/* Info modal */
+/* Tab content sections */
+.tab-inner{padding:16px 12px}
+.info-card{background:#16163a;border-radius:10px;padding:16px;margin-bottom:10px}
+.info-card.hotel-card{border-left:3px solid #f39c12}
+.info-card.transport-card{border-left:3px solid #3498db}
+.info-card h4{font-size:13px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.info-card .detail{font-size:14px;color:#ddd;line-height:1.7}
+.info-card a{color:#f5b041;text-decoration:none}
+.info-card.transport-card a{color:#5dade2}
+.voucher-area{margin-top:12px;padding:12px;background:#1e1e4a;border-radius:8px}
+.voucher-area h5{font-size:12px;color:#888;margin-bottom:6px}
+.voucher-area .placeholder{font-size:13px;color:#555;font-style:italic}
+.voucher-link{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:6px;font-size:12px;color:#2ecc71;background:#16163a;text-decoration:none;margin-top:4px}
+
+/* Modal */
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:3000;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
 .modal{background:#1a1a3e;border-radius:14px;padding:20px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;position:relative;border:1px solid #2a2a5a}
 .modal h3{color:#fff;font-size:17px;margin-bottom:10px;padding-right:30px}
-.modal p{color:#bbb;font-size:14px;line-height:1.7;margin-bottom:10px}
-.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:24px;cursor:pointer;line-height:1}
-.modal-close:hover{color:#fff}
-
-/* Section boxes */
-.section-box{margin:12px;padding:14px;background:#16163a;border-radius:10px}
-.section-box.hotel{border-left:3px solid #f39c12}
-.section-box.transport{border-left:3px solid #3498db}
-.section-box h4{font-size:13px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.section-box .detail{font-size:14px;color:#ddd;line-height:1.6}
-.section-box a{color:#f5b041;text-decoration:none}
-.section-box.transport a{color:#5dade2}
-.voucher-link{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;color:#2ecc71;background:#1e1e4a;text-decoration:none;margin-top:6px}
-
-/* Summary page */
-.summary-page{padding:20px 16px}
-.summary-page h2{font-size:22px;color:#fff;margin-bottom:16px;border-bottom:2px solid #e74c3c;padding-bottom:8px}
-.summary-page h3{font-size:16px;color:#ddd;margin:16px 0 8px}
-.s-table{width:100%;border-collapse:collapse;margin-bottom:16px;display:block;overflow-x:auto}
-.s-table th{background:#1e1e4a;padding:8px 10px;text-align:left;font-size:12px;color:#aaa;white-space:nowrap}
-.s-table td{padding:8px 10px;border-bottom:1px solid #1e1e3a;font-size:13px;white-space:nowrap}
-.s-table a{color:#5dade2;text-decoration:none}
+.modal p{color:#bbb;font-size:14px;line-height:1.7}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:24px;cursor:pointer}
 
 /* Missing page */
 .missing-page{padding:20px 16px}
-.missing-page h2{font-size:22px;color:#fff;margin-bottom:16px;border-bottom:2px solid #f39c12;padding-bottom:8px}
+.missing-page h2{font-size:22px;color:#fff;margin-bottom:16px;border-bottom:2px solid #f39c12;padding-bottom:10px}
 .tier-title{font-size:15px;margin:16px 0 10px;font-weight:bold}
 .tier-title.t1{color:#e74c3c}.tier-title.t2{color:#f39c12}.tier-title.t3{color:#3498db}.tier-title.t4{color:#2ecc71}
 .m-item{background:#16163a;border-radius:10px;padding:12px 14px;margin-bottom:8px}
@@ -97,24 +106,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 .m-item .m-title a{color:#5dade2;text-decoration:none}
 .m-item .m-desc{font-size:13px;color:#aaa;line-height:1.5}
 
-/* Swipe hint */
-.swipe-hint{text-align:center;padding:8px;font-size:11px;color:#555}
-
-/* Numbered map icons */
 .n-icon{background:#e74c3c;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
 
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">×</button>
-    <h3 id="modal-title"></h3>
-    <p id="modal-body"></p>
-  </div>
+  <div class="modal"><button class="modal-close" onclick="closeModal()">×</button><h3 id="modal-title"></h3><p id="modal-body"></p></div>
 </div>
 
-<div class="pages-container" id="pages-container"></div>
+<div id="app"></div>
 
 <div class="bottom-nav">
   <button class="nav-arrow" onclick="goPage(currentPage-1)">‹</button>
@@ -123,364 +124,309 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-sy
 </div>
 
 <script>
-// ===== POI DESCRIPTIONS =====
-const DESC={
-"incheon_airport":"Incheon International Airport (ICN) is South Korea's main gateway, consistently ranked among the world's best. It features free cultural experience zones and Korean gardens. Grab a T-money transit card at the convenience stores in arrivals — it works on subways, buses, and taxis across the country.",
-"myeongdong":"Myeongdong is Seoul's premier shopping and entertainment district, packed with Korean cosmetics shops, fashion boutiques, and street food stalls. Visit in the evening when the food vendors are in full swing and the neon lights create an electric atmosphere.",
-"yukjeon_hoekwan":"Yukjeon Hoekwan is a beloved Seoul restaurant famous for its bulgogi-jeongol, a simmering pot of marinated beef with vegetables and glass noodles. Operating since 1959, it's one of the city's most iconic traditional dining experiences. Arrive before peak hours as waits can be long.",
-"cheonggyecheon":"Cheonggyecheon is a restored 10.9km stream running through downtown Seoul, transformed from a covered highway into a peaceful urban oasis in 2005. Lined with walking paths, public art, and small waterfalls, it's beautifully illuminated at night.",
-"gyeongbokgung":"Gyeongbokgung is the grandest of Seoul's Five Grand Palaces, built in 1395 as the main royal palace of the Joseon Dynasty. Its grounds include the iconic throne hall and the Gyeonghoeru Pavilion over a lotus pond. Wearing hanbok gets you free admission, and the guard changing ceremony happens multiple times daily.",
-"bukchon":"Bukchon Hanok Village is a residential neighborhood between two palaces, famous for hundreds of traditional hanok houses with curved tile rooftops. Walking its hilly alleyways offers a glimpse into Korea's architectural heritage against a modern skyline. Keep noise down — this is still a living neighborhood.",
-"myeongdong_kyoja":"Myeongdong Kyoja is a no-frills institution famous for handmade kalguksu (knife-cut noodle soup) and mandu (dumplings) since 1966. The rich savory broth and chewy noodles draw long lines. The menu is intentionally limited — just pick between noodles, dumplings, or bibimbap.",
-"seochon":"Seochon is a charming neighborhood west of Gyeongbokgung, once home to Joseon-era artisans. Today it's filled with independent cafés, galleries, and boutiques in quiet alleyways alongside traditional hanok homes. More authentic and less touristy than nearby Bukchon.",
-"ssamjigil":"Ssamjigil is a creative open-air shopping complex in Insadong with a continuous spiral walkway from ground level to the rooftop. It houses shops selling handmade crafts, traditional Korean goods, and quirky souvenirs alongside artist studios and cafés.",
-"jogyesa":"Jogyesa is the chief temple of the Jogye Order of Korean Buddhism in the heart of Seoul. During Buddha's Birthday season (around May), thousands of colorful paper lanterns are strung across the temple grounds — a stunning sight that will be up during your visit.",
-"maple_tree":"Maple Tree House is one of Seoul's most acclaimed Korean BBQ restaurants in Itaewon, known for high-quality aged galbi and pork belly in a stylish setting. Reservations are strongly recommended, especially for dinner on weekends.",
-"yeouido_bike":"Yeouido Park sits on an island in the Han River and serves as a popular starting point for Seoul's extensive riverside bike path network. The paved paths stretch over 40km along both banks, offering skyline views and a car-free ride through the city.",
-"jamsil_bike":"The Jamsil area along the Han River, near Lotte World Tower (Korea's tallest building), makes a great turnaround point for a riverside bike ride from Yeouido. The stretch passes through several parks with facilities and scenic overlooks.",
-"inwangsan":"Inwangsan (338m) is a granite peak in central Seoul with the restored Seoul Fortress Wall running along its ridge. The hike offers panoramic city views and passes shamanistic shrines still actively used. Moderately steep but short at about 1.5–2 hours round trip.",
-"n_seoul_tower":"N Seoul Tower sits atop Namsan Mountain at 480m above sea level, offering 360-degree panoramic views. Built in 1969, it's the city's most recognizable landmark. Take the Namsan cable car up and visit at sunset to see Seoul transition to a sea of lights.",
-"jungsik":"Jungsik is a Michelin-starred restaurant reimagining Korean cuisine through modern fine-dining techniques. Chef Yim Jung-sik pioneered contemporary Korean gastronomy, blending traditional flavors with global culinary arts. Book well in advance for the multi-course tasting menu.",
-"jeju_airport":"Jeju International Airport serves South Korea's largest island. The Gimpo–Jeju route is among the world's busiest flight corridors. Pick up your rental car here — having wheels on Jeju is essential as public transit between attractions is limited.",
-"saryeoni":"Saryeoni Forest Trail is a serene, mostly flat woodland path through dense cypress and cedar forest in Jeju's interior highlands. The gentle course is accessible to all fitness levels and feels wonderfully removed from the coast's tourist bustle. Go in the morning for misty, atmospheric conditions.",
-"dombedon":"Dombedon is a popular Jeju restaurant specializing in heuk-dwaeji (Jeju black pork), a local breed prized for rich flavor and tender texture. The pork is grilled at your table with fresh local sides. Arrive early for dinner as it fills up quickly.",
-"seongsan_port":"Seongsan Port is the departure point for ferries to Udo Island on Jeju's eastern coast. Ferries run frequently and take about 15 minutes. Bring your passport for boarding, and check the last return ferry time so you don't get stranded.",
-"udo_island":"Udo Island is a small, picturesque island off Jeju's east coast known for turquoise waters, coral sand beaches, and peanut ice cream. An electric bike is the best way to circle it in a few hours, passing lighthouses, stone walls, and the famous Sanho Beach.",
-"seongsan_ilchulbong":"Seongsan Ilchulbong (Sunrise Peak) is a dramatic volcanic tuff cone rising 182m from the sea, formed by an underwater eruption over 5,000 years ago. The 25-minute climb rewards you with sweeping ocean views and a look into the bowl-shaped crater. UNESCO World Heritage site.",
-"jusangjeolli":"Daepo Jusangjeolli Cliff is a striking formation of hexagonal basalt columns along Jeju's southern coast, created when lava cooled rapidly upon hitting the ocean. The geometric pillars rising from crashing waves make it one of Jeju's most photogenic sites. A short boardwalk leads to the viewpoint.",
-"olle_trail_7":"Jeju Olle Trail Section 7 is widely considered the most scenic segment of the island's famous walking route, running along the southern coast. The path passes volcanic cliffs, tangerine orchards, coastal villages, and ocean vistas. Well-marked with blue and orange ribbons.",
-"osulloc":"O'sulloc Tea Museum is a sleek complex surrounded by emerald-green tea fields in Jeju's western highlands. It covers Korean tea history and offers tastings of Jeju-grown green teas and matcha desserts. Admission is free, and the adjacent Innisfree shop sells unique tea-based skincare.",
-"hyeopjae":"Hyeopjae Beach features white coral sand and shallow emerald waters with views of Biyangdo Island. The gentle waves are great for wading, and black lava rocks provide dramatic contrast. Cafés and restaurants line the road behind the beach.",
-"gimhae_airport":"Gimhae International Airport is Busan's main airport with convenient light rail connections to downtown. Smaller and easier to navigate than Incheon. The Busan-Gimhae Light Rail connects directly to the city's metro system.",
-"gamcheon":"Gamcheon Culture Village is Busan's colorful hillside community, often called the 'Machu Picchu of Busan.' Tightly packed pastel houses cascade down a steep slope, filled with murals, sculptures, and galleries. Wear comfortable shoes and follow the stamp-trail map.",
-"haeundae":"Haeundae Beach is Busan's most famous beach, a wide crescent of sand backed by high-rise hotels. The beachfront boardwalk and surrounding alleys full of restaurants make it lively year-round, even outside swimming season.",
-"amsogalbi":"Haeundae Amsogalbi-jip is a beloved Busan institution known for tender marinated beef short ribs grilled over charcoal. A go-to spot for locals celebrating special occasions. Pair your galbi with naengmyeon (cold noodles) for the classic combo.",
-"igidae":"Igidae Coastal Walk is a stunning 5km cliffside trail offering dramatic views of Haeundae's skyline, Gwangan Bridge, and the open sea. The path passes through pine forests and along rocky bluffs with panoramic viewpoints. About 2 hours with some stairs.",
-"yonggungsa":"Haedong Yonggungsa is a rare seaside Buddhist temple perched on Busan's rocky coastline, built in 1376. Unlike most Korean temples in mountains, this one sits at the ocean's edge with waves crashing below. Arrive early to beat tour groups.",
-"bulguksa":"Bulguksa Temple is a masterpiece of Silla-era Buddhist architecture in Gyeongju, originally built in 528. A UNESCO World Heritage Site housing several National Treasures including the Dabotap and Seokgatap stone pagodas.",
-"seokguram":"Seokguram Grotto is an 8th-century artificial stone cave housing a magnificent seated Buddha gazing toward the East Sea. Considered one of the finest Buddhist sculptures in the world — a UNESCO World Heritage pinnacle. Viewing is through glass to preserve the climate.",
-"hwangridan":"Hwangridan-gil is Gyeongju's trendy street blending ancient heritage with hip cafés, boutiques, and restaurants in renovated hanok buildings. The social heart of Gyeongju for younger visitors — ideal for dinner after a day of temple visits.",
-"wolji":"Wolji Pond (formerly Anapji) is a Silla Dynasty palace garden from 674 AD. The pond and three islands are flanked by pavilions that reflect perfectly in still water. Visit at night when everything is illuminated — one of Korea's most magical evening scenes.",
-"jagalchi":"Jagalchi Market is Korea's largest seafood market along Busan's waterfront. Upper-floor restaurants prepare fresh catches on the spot. Head to the second floor for sit-down raw fish meals with harbor views — prices are negotiable.",
-"biff":"BIFF Square honors Busan's famous film festival with handprints of international directors. The surrounding streets are packed with street food, especially hotteok (sweet stuffed pancakes). Right next to Jagalchi and Gukje markets.",
-"blueline":"Haeundae Blueline Park features the Sky Capsule — colorful pods gliding along a coastal rail track with gorgeous ocean views. The Beach Train runs the same route in a vintage railcar. Book Sky Capsule tickets online in advance as they sell out.",
-"gukje":"Gukje Market is one of Busan's largest traditional markets, established by Korean War refugees in 1950. Its maze of covered alleys sells everything from clothing to housewares and street food. The adjacent Bupyeong Market is great for late-night food.",
-"busan_station":"Busan Station is the city's main KTX hub, connecting to Seoul in about 2.5 hours. Book tickets via the Korail app in advance for better seats — aim for a window to enjoy the countryside views.",
-"hongdae":"Hongdae is Seoul's youthful creative neighborhood around Hongik University, famous for indie music, street performances, and nightlife. By day: quirky shops and themed cafés. By night: one of Seoul's liveliest entertainment districts.",
-"bukhansan":"Bukhansan National Park is a dramatic granite mountain park on Seoul's northern edge — one of the most-visited national parks per square meter in the world. The Bukhansanseong trail follows a historic fortress wall to rugged peaks with sweeping city views.",
-"icheon":"Icheon is Korea's center of ceramic arts, carrying on a tradition from the Goryeo Dynasty's celadon masters. The annual Ceramic Festival showcases master potters and hands-on workshops. Also famous for some of Korea's best rice.",
-"naksan":"Naksan Park is a hilltop park on Seoul's old eastern fortress wall with panoramic views of Dongdaemun and the cityscape. The restored Seoul City Wall makes for a pleasant walk connecting to nearby Ihwa Mural Village. Sunset is the best time.",
-"ihwa":"Ihwa Mural Village is an art-filled hillside neighborhood where colorful murals transform ordinary walls into an open-air gallery. Part of a 2006 urban regeneration project. Be respectful of residents and keep noise down.",
-"gwangjang":"Gwangjang Market is Seoul's oldest traditional market (1905) and a must-visit for street food. The central food alley is legendary for bindaetteok (mung bean pancakes), mayak gimbap, and yukhoe (beef tartare). Grab a seat at any bustling stall.",
-"ddp":"Dongdaemun Design Plaza is Zaha Hadid's futuristic landmark serving as a hub for design exhibitions and cultural events. Its aluminum exterior is striking at night alongside the illuminated LED rose garden. Check the exhibition schedule online.",
-"han_river_evening":"The Han River parks come alive as Seoulites gather to picnic, bike, and socialize. Ordering fried chicken and beer (chimaek) for delivery to your riverside mat is a beloved tradition. Grab snacks, find a spot on the grass, and enjoy the skyline.",
-"hotel_seoul":"On departure day, most Seoul hotels offer luggage storage so you can explore nearby neighborhoods. Allow at least 90 minutes for transit to Incheon Airport via AREX from Seoul Station.",
-"incheon_depart":"Incheon Airport's departure is smooth with excellent duty-free shopping, Korean food courts, and cultural centers past security. Arrive 2.5–3 hours before your flight. Don't forget to claim your tax refund at the automated kiosks."
-};
+const DESC={"incheon_airport":"Incheon International Airport (ICN) is South Korea's main gateway, consistently ranked among the world's best. It features free cultural experience zones and Korean gardens. Grab a T-money transit card at the convenience stores in arrivals — it works on subways, buses, and taxis across the country.","myeongdong":"Myeongdong is Seoul's premier shopping and entertainment district, packed with Korean cosmetics shops, fashion boutiques, and street food stalls. Visit in the evening when the food vendors are in full swing and the neon lights create an electric atmosphere.","yukjeon_hoekwan":"Yukjeon Hoekwan is a beloved Seoul restaurant famous for its bulgogi-jeongol, a simmering pot of marinated beef with vegetables and glass noodles. Operating since 1959, it's one of the city's most iconic traditional dining experiences. Arrive before peak hours as waits can be long.","cheonggyecheon":"Cheonggyecheon is a restored 10.9km stream running through downtown Seoul, transformed from a covered highway into a peaceful urban oasis in 2005. Lined with walking paths, public art, and small waterfalls, it's beautifully illuminated at night.","gyeongbokgung":"Gyeongbokgung is the grandest of Seoul's Five Grand Palaces, built in 1395 as the main royal palace of the Joseon Dynasty. Its grounds include the iconic throne hall and the Gyeonghoeru Pavilion over a lotus pond. Wearing hanbok gets you free admission, and the guard changing ceremony happens multiple times daily.","bukchon":"Bukchon Hanok Village is a residential neighborhood between two palaces, famous for hundreds of traditional hanok houses with curved tile rooftops. Walking its hilly alleyways offers a glimpse into Korea's architectural heritage against a modern skyline. Keep noise down — this is still a living neighborhood.","myeongdong_kyoja":"Myeongdong Kyoja is a no-frills institution famous for handmade kalguksu (knife-cut noodle soup) and mandu (dumplings) since 1966. The rich savory broth and chewy noodles draw long lines. The menu is intentionally limited — just pick between noodles, dumplings, or bibimbap.","seochon":"Seochon is a charming neighborhood west of Gyeongbokgung, once home to Joseon-era artisans. Today it's filled with independent cafés, galleries, and boutiques in quiet alleyways alongside traditional hanok homes. More authentic and less touristy than nearby Bukchon.","ssamjigil":"Ssamjigil is a creative open-air shopping complex in Insadong with a continuous spiral walkway from ground level to the rooftop. It houses shops selling handmade crafts, traditional Korean goods, and quirky souvenirs alongside artist studios and cafés.","jogyesa":"Jogyesa is the chief temple of the Jogye Order of Korean Buddhism in the heart of Seoul. During Buddha's Birthday season (around May), thousands of colorful paper lanterns are strung across the temple grounds — a stunning sight that will be up during your visit.","maple_tree":"Maple Tree House is one of Seoul's most acclaimed Korean BBQ restaurants in Itaewon, known for high-quality aged galbi and pork belly in a stylish setting. Reservations are strongly recommended, especially for dinner on weekends.","yeouido_bike":"Yeouido Park sits on an island in the Han River and serves as a popular starting point for Seoul's extensive riverside bike path network. The paved paths stretch over 40km along both banks, offering skyline views and a car-free ride through the city.","jamsil_bike":"The Jamsil area along the Han River, near Lotte World Tower (Korea's tallest building), makes a great turnaround point for a riverside bike ride from Yeouido. The stretch passes through several parks with facilities and scenic overlooks.","inwangsan":"Inwangsan (338m) is a granite peak in central Seoul with the restored Seoul Fortress Wall running along its ridge. The hike offers panoramic city views and passes shamanistic shrines still actively used. Moderately steep but short at about 1.5–2 hours round trip.","n_seoul_tower":"N Seoul Tower sits atop Namsan Mountain at 480m above sea level, offering 360-degree panoramic views. Built in 1969, it's the city's most recognizable landmark. Take the Namsan cable car up and visit at sunset to see Seoul transition to a sea of lights.","jungsik":"Jungsik is a Michelin-starred restaurant reimagining Korean cuisine through modern fine-dining techniques. Chef Yim Jung-sik pioneered contemporary Korean gastronomy, blending traditional flavors with global culinary arts. Book well in advance for the multi-course tasting menu.","jeju_airport":"Jeju International Airport serves South Korea's largest island. The Gimpo–Jeju route is among the world's busiest flight corridors. Pick up your rental car here — having wheels on Jeju is essential as public transit between attractions is limited.","saryeoni":"Saryeoni Forest Trail is a serene, mostly flat woodland path through dense cypress and cedar forest in Jeju's interior highlands. The gentle course is accessible to all fitness levels and feels wonderfully removed from the coast's tourist bustle. Go in the morning for misty, atmospheric conditions.","dombedon":"Dombedon is a popular Jeju restaurant specializing in heuk-dwaeji (Jeju black pork), a local breed prized for rich flavor and tender texture. The pork is grilled at your table with fresh local sides. Arrive early for dinner as it fills up quickly.","seongsan_port":"Seongsan Port is the departure point for ferries to Udo Island on Jeju's eastern coast. Ferries run frequently and take about 15 minutes. Bring your passport for boarding, and check the last return ferry time so you don't get stranded.","udo_island":"Udo Island is a small, picturesque island off Jeju's east coast known for turquoise waters, coral sand beaches, and peanut ice cream. An electric bike is the best way to circle it in a few hours, passing lighthouses, stone walls, and the famous Sanho Beach.","seongsan_ilchulbong":"Seongsan Ilchulbong (Sunrise Peak) is a dramatic volcanic tuff cone rising 182m from the sea, formed by an underwater eruption over 5,000 years ago. The 25-minute climb rewards you with sweeping ocean views and a look into the bowl-shaped crater. UNESCO World Heritage site.","jusangjeolli":"Daepo Jusangjeolli Cliff is a striking formation of hexagonal basalt columns along Jeju's southern coast, created when lava cooled rapidly upon hitting the ocean. The geometric pillars rising from crashing waves make it one of Jeju's most photogenic sites.","olle_trail_7":"Jeju Olle Trail Section 7 is widely considered the most scenic segment of the island's famous walking route, running along the southern coast. The path passes volcanic cliffs, tangerine orchards, coastal villages, and ocean vistas. Well-marked with blue and orange ribbons.","osulloc":"O'sulloc Tea Museum is a sleek complex surrounded by emerald-green tea fields in Jeju's western highlands. It covers Korean tea history and offers tastings of Jeju-grown green teas and matcha desserts. Admission is free.","hyeopjae":"Hyeopjae Beach features white coral sand and shallow emerald waters with views of Biyangdo Island. The gentle waves are great for wading, and black lava rocks provide dramatic contrast. Cafés and restaurants line the road behind the beach.","gimhae_airport":"Gimhae International Airport is Busan's main airport with convenient light rail connections to downtown. Smaller and easier to navigate than Incheon.","gamcheon":"Gamcheon Culture Village is Busan's colorful hillside community, often called the 'Machu Picchu of Busan.' Tightly packed pastel houses cascade down a slope, filled with murals, sculptures, and galleries. Wear comfortable shoes and follow the stamp-trail map.","haeundae":"Haeundae Beach is Busan's most famous beach, a wide crescent of sand backed by high-rise hotels. The beachfront boardwalk and surrounding alleys make it lively year-round.","amsogalbi":"Haeundae Amsogalbi-jip is a beloved Busan institution known for tender marinated beef short ribs grilled over charcoal. Pair your galbi with naengmyeon (cold noodles) for the classic combo.","igidae":"Igidae Coastal Walk is a stunning 5km cliffside trail offering dramatic views of Haeundae's skyline, Gwangan Bridge, and the open sea. The path passes through pine forests and along rocky bluffs. About 2 hours with some stairs.","yonggungsa":"Haedong Yonggungsa is a rare seaside Buddhist temple on Busan's rocky coastline, built in 1376. Unlike most Korean temples in mountains, this one sits at the ocean's edge with waves crashing below. Arrive early to beat tour groups.","bulguksa":"Bulguksa Temple is a masterpiece of Silla-era Buddhist architecture in Gyeongju, originally built in 528. A UNESCO World Heritage Site housing several National Treasures including the Dabotap and Seokgatap stone pagodas.","seokguram":"Seokguram Grotto is an 8th-century artificial stone cave housing a magnificent seated Buddha gazing toward the East Sea. Considered one of the finest Buddhist sculptures in the world — a UNESCO World Heritage pinnacle.","hwangridan":"Hwangridan-gil is Gyeongju's trendy street blending ancient heritage with hip cafés, boutiques, and restaurants in renovated hanok buildings. Ideal for dinner after temple visits.","wolji":"Wolji Pond (formerly Anapji) is a Silla Dynasty palace garden from 674 AD. The pond and three islands are flanked by pavilions that reflect perfectly in still water. Visit at night when illuminated — one of Korea's most magical evening scenes.","jagalchi":"Jagalchi Market is Korea's largest seafood market along Busan's waterfront. Upper-floor restaurants prepare fresh catches on the spot.","biff":"BIFF Square honors Busan's film festival with handprints of directors and stars. The surrounding streets are packed with street food, especially hotteok (sweet stuffed pancakes).","blueline":"Haeundae Blueline Park features the Sky Capsule — colorful pods gliding along a coastal rail track with ocean views. Book tickets online in advance as they sell out.","gukje":"Gukje Market is one of Busan's largest traditional markets, established by Korean War refugees in 1950. A maze of covered alleys selling everything from clothing to street food.","busan_station":"Busan Station is the city's main KTX hub, connecting to Seoul in about 2.5 hours. Book tickets via the Korail app in advance.","hongdae":"Hongdae is Seoul's youthful creative neighborhood around Hongik University, famous for indie music, street performances, and nightlife. By day: quirky shops and cafés. By night: one of Seoul's liveliest districts.","bukhansan":"Bukhansan National Park is a dramatic granite mountain park on Seoul's northern edge. The Bukhansanseong trail follows a historic fortress wall to rugged peaks with sweeping city views. Moderately strenuous — bring proper footwear and water.","icheon":"Icheon is Korea's center of ceramic arts, with a tradition dating to the Goryeo Dynasty. The annual Ceramic Festival showcases master potters and hands-on workshops. Also famous for some of Korea's best rice.","naksan":"Naksan Park is a hilltop park on Seoul's old eastern fortress wall with panoramic views. The restored City Wall makes for a pleasant walk connecting to Ihwa Mural Village. Sunset is the best time.","ihwa":"Ihwa Mural Village is an art-filled hillside neighborhood where colorful murals transform ordinary walls into an open-air gallery. Be respectful of residents.","gwangjang":"Gwangjang Market is Seoul's oldest traditional market (1905) and a must-visit for street food. Legendary for bindaetteok (mung bean pancakes), mayak gimbap, and yukhoe (beef tartare).","ddp":"Dongdaemun Design Plaza is Zaha Hadid's futuristic landmark, a hub for design exhibitions and cultural events. Striking at night with the LED rose garden illuminated.","han_river_evening":"The Han River parks come alive as Seoulites gather to picnic and socialize. Ordering fried chicken and beer (chimaek) delivered to your riverside mat is a beloved tradition.","hotel_seoul":"On departure day, most Seoul hotels offer luggage storage. Allow at least 90 minutes for transit to Incheon via AREX from Seoul Station.","incheon_depart":"Incheon Airport's departure is smooth with excellent duty-free shopping and food courts past security. Arrive 2.5–3 hours before your flight."};
 
-// ===== DAY DATA =====
 const DAYS=[
-{id:"day1",num:1,title:"Arrive Seoul",date:"Apr 23 (Wed)",region:"Seoul",navClass:"seoul",
-transport:{text:"✈ Incheon Airport → Hotel via AREX train or taxi (~1hr)",detail:"Airport Railroad Express (AREX) from Incheon to Seoul Station, then taxi to hotel. Or direct taxi/private transfer (~60 min)."},
-hotel:'<a href="https://www.google.com/search?q=Four+Seasons+Hotel+Seoul">Four Seasons Seoul</a> or <a href="https://www.google.com/search?q=Rakkojae+Seoul+hanok+hotel">Rakkojae Hanok</a> (luxury hanok) · Jongno/Bukchon area',
+{num:1,title:"Arrive Seoul",date:"Apr 23 (Wed)",region:"Seoul",nc:"seoul",
+transport:{text:"✈ Incheon Airport → Hotel via AREX or taxi (~1hr)",detail:"Airport Railroad Express to Seoul Station, then taxi. Or direct transfer ~60 min."},
+hotel:{text:'<a href="https://www.google.com/search?q=Four+Seasons+Hotel+Seoul">Four Seasons Seoul</a> or <a href="https://www.google.com/search?q=Rakkojae+Seoul+hanok+hotel">Rakkojae Hanok</a> · Jongno/Bukchon'},
 pois:[
-{n:1,key:"incheon_airport",time:"10:50",name:"Incheon Airport — arrive, pick up eSIMs, T-money cards",lat:37.4602,lng:126.4407,search:"Incheon+Airport"},
-{n:2,key:"myeongdong",time:"Late PM",name:"Myeongdong — people-watching, street food",lat:37.5636,lng:126.9869,search:"Myeongdong+Seoul+street+food"},
-{n:3,key:"yukjeon_hoekwan",time:"Dinner",name:"Yukjeon Hoekwan — Michelin bulgogi since 1966",lat:37.5563,lng:126.9220,search:"Yukjeon+Hoekwan+Seoul+bulgogi",badge:"food"},
-{n:4,key:"cheonggyecheon",time:"Evening",name:"Cheonggyecheon Stream — lit up at night",lat:37.5700,lng:126.9783,search:"Cheonggyecheon+Stream+Seoul+night"}
+{n:1,key:"incheon_airport",time:"10:50",name:"Incheon Airport — arrive, eSIMs, T-money",lat:37.4602,lng:126.4407,q:"Incheon+Airport"},
+{n:2,key:"myeongdong",time:"Late PM",name:"Myeongdong — people-watching, street food",lat:37.5636,lng:126.9869,q:"Myeongdong+Seoul"},
+{n:3,key:"yukjeon_hoekwan",time:"Dinner",name:"Yukjeon Hoekwan — Michelin bulgogi",lat:37.5563,lng:126.9220,q:"Yukjeon+Hoekwan+Seoul",badge:"food"},
+{n:4,key:"cheonggyecheon",time:"Evening",name:"Cheonggyecheon Stream — lit at night",lat:37.5700,lng:126.9783,q:"Cheonggyecheon+Stream+Seoul"}
 ]},
-
-{id:"day2",num:2,title:"Seoul Culture + People-Watching",date:"Apr 24 (Thu)",region:"Seoul",navClass:"seoul",
-transport:null,
-hotel:"Same as Day 1",
+{num:2,title:"Seoul Culture",date:"Apr 24 (Thu)",region:"Seoul",nc:"seoul",transport:null,
+hotel:{text:"Same as Day 1"},
 pois:[
-{n:1,key:"gyeongbokgung",time:"Morning",name:"Gyeongbokgung Palace + guard ceremony (10am)",lat:37.5796,lng:126.9770,search:"Gyeongbokgung+Palace+Seoul"},
-{n:2,key:"bukchon",time:"AM",name:"Bukchon Hanok Village",lat:37.5826,lng:126.9831,search:"Bukchon+Hanok+Village+Seoul"},
-{n:3,key:"myeongdong_kyoja",time:"Lunch",name:"Myeongdong Kyoja — legendary noodles, Michelin Bib Gourmand",lat:37.5635,lng:126.9853,search:"Myeongdong+Kyoja+Seoul",badge:"food"},
-{n:4,key:"seochon",time:"PM",name:"Seochon — quiet cafes, galleries, local vibe",lat:37.5790,lng:126.9680,search:"Seochon+Seoul+neighborhood+cafes"},
-{n:5,key:"ssamjigil",time:"PM",name:"Ssamjigil — Insadong craft market",lat:37.5745,lng:126.9856,search:"Ssamjigil+Insadong+Seoul"},
-{n:6,key:"jogyesa",time:"Evening",name:"Jogyesa Temple — lotus lantern displays",lat:37.5730,lng:126.9836,search:"Jogyesa+Temple+Seoul+lotus+lanterns"},
-{n:7,key:"maple_tree",time:"Dinner",name:"Maple Tree House — upscale Korean BBQ",lat:37.5340,lng:126.9945,search:"Maple+Tree+House+Seoul+Korean+BBQ",badge:"food"}
+{n:1,key:"gyeongbokgung",time:"Morning",name:"Gyeongbokgung Palace + guard ceremony",lat:37.5796,lng:126.9770,q:"Gyeongbokgung+Palace+Seoul"},
+{n:2,key:"bukchon",time:"AM",name:"Bukchon Hanok Village",lat:37.5826,lng:126.9831,q:"Bukchon+Hanok+Village+Seoul"},
+{n:3,key:"myeongdong_kyoja",time:"Lunch",name:"Myeongdong Kyoja — Michelin noodles",lat:37.5635,lng:126.9853,q:"Myeongdong+Kyoja+Seoul",badge:"food"},
+{n:4,key:"seochon",time:"PM",name:"Seochon — cafes, galleries",lat:37.5790,lng:126.9680,q:"Seochon+Seoul"},
+{n:5,key:"ssamjigil",time:"PM",name:"Ssamjigil — Insadong crafts",lat:37.5745,lng:126.9856,q:"Ssamjigil+Insadong+Seoul"},
+{n:6,key:"jogyesa",time:"Evening",name:"Jogyesa Temple — lotus lanterns",lat:37.5730,lng:126.9836,q:"Jogyesa+Temple+Seoul+lanterns"},
+{n:7,key:"maple_tree",time:"Dinner",name:"Maple Tree House — Korean BBQ",lat:37.5340,lng:126.9945,q:"Maple+Tree+House+Seoul",badge:"food"}
 ]},
-
-{id:"day3",num:3,title:"Seoul E-Bike + Hike",date:"Apr 25 (Fri)",region:"Seoul",navClass:"seoul",
-transport:null,hotel:"Same as Day 1",
+{num:3,title:"E-Bike + Hike",date:"Apr 25 (Fri)",region:"Seoul",nc:"seoul",transport:null,hotel:{text:"Same as Day 1"},
 pois:[
-{n:1,key:"yeouido_bike",time:"Morning",name:"🚴 E-bike Han River — Yeouido start",lat:37.5254,lng:126.9223,search:"Han+River+bicycle+path+Seoul+ebike",badge:"bike",badgeText:"35 km · ~2.5 hrs · flat"},
-{n:2,key:"jamsil_bike",time:"AM",name:"Jamsil turnaround point",lat:37.5133,lng:127.1001,search:"Jamsil+Han+River+Seoul",badge:"bike"},
-{n:3,key:"inwangsan",time:"PM",name:"🥾 Inwangsan Fortress Wall hike",lat:37.5840,lng:126.9590,search:"Inwangsan+fortress+wall+hike+Seoul",badge:"hike",badgeText:"3.5 km · 1.5–2 hrs · +236m"},
-{n:4,key:"n_seoul_tower",time:"Sunset",name:"N Seoul Tower — cable car up from Namsan",lat:37.5512,lng:126.9882,search:"N+Seoul+Tower+sunset"},
-{n:5,key:"jungsik",time:"Dinner",name:"Jungsik — Michelin-starred modern Korean",lat:37.5230,lng:127.0230,search:"Jungsik+Seoul+Michelin+restaurant",badge:"food"}
+{n:1,key:"yeouido_bike",time:"Morning",name:"🚴 E-bike Han River start",lat:37.5254,lng:126.9223,q:"Han+River+bike+path+Yeouido",badge:"bike",bt:"35 km · ~2.5 hrs · flat"},
+{n:2,key:"jamsil_bike",time:"AM",name:"Jamsil turnaround",lat:37.5133,lng:127.1001,q:"Jamsil+Han+River+Seoul",badge:"bike"},
+{n:3,key:"inwangsan",time:"PM",name:"🥾 Inwangsan Fortress Wall",lat:37.5840,lng:126.9590,q:"Inwangsan+hike+Seoul",badge:"hike",bt:"3.5 km · 1.5–2 hrs · +236m"},
+{n:4,key:"n_seoul_tower",time:"Sunset",name:"N Seoul Tower",lat:37.5512,lng:126.9882,q:"N+Seoul+Tower"},
+{n:5,key:"jungsik",time:"Dinner",name:"Jungsik — Michelin starred",lat:37.5230,lng:127.0230,q:"Jungsik+Seoul",badge:"food"}
 ]},
-
-{id:"day4",num:4,title:"Fly to Jeju",date:"Apr 26 (Sat)",region:"Jeju",navClass:"jeju",
-transport:{text:"✈ Gimpo → Jeju (~1 hr) + 🚗 Rental car pickup at Jeju Airport",detail:"Domestic flight from Seoul Gimpo to Jeju. Pick up rental car at airport — needed for 3 days on the island."},
-hotel:'<a href="https://www.google.com/search?q=Shilla+Hotel+Jeju">The Shilla Jeju</a> or <a href="https://www.google.com/search?q=JW+Marriott+Jeju+Resort">JW Marriott Jeju</a> · Seogwipo/Jungmun',
+{num:4,title:"Fly to Jeju",date:"Apr 26 (Sat)",region:"Jeju",nc:"jeju",
+transport:{text:"✈ Gimpo → Jeju (~1 hr) + 🚗 Rental car at Jeju Airport",detail:"Domestic flight. Rental car needed for 3 days on the island."},
+hotel:{text:'<a href="https://www.google.com/search?q=Shilla+Hotel+Jeju">The Shilla Jeju</a> or <a href="https://www.google.com/search?q=JW+Marriott+Jeju">JW Marriott Jeju</a> · Seogwipo/Jungmun'},
 pois:[
-{n:1,key:"jeju_airport",time:"Morning",name:"Jeju Airport — arrive, pick up rental car",lat:33.5104,lng:126.4913,search:"Jeju+Airport"},
-{n:2,key:"saryeoni",time:"PM",name:"🥾 Saryeoni Forest Trail — flat cedar forest",lat:33.3830,lng:126.6690,search:"Saryeoni+Forest+Trail+Jeju",badge:"hike",badgeText:"10 km · 2–3 hrs · +222m"},
-{n:3,key:"dombedon",time:"Dinner",name:"Dombedon — Michelin black pork BBQ",lat:33.5120,lng:126.5310,search:"Dombedon+Jeju+black+pork",badge:"food"}
+{n:1,key:"jeju_airport",time:"Morning",name:"Jeju Airport — rental car",lat:33.5104,lng:126.4913,q:"Jeju+Airport"},
+{n:2,key:"saryeoni",time:"PM",name:"🥾 Saryeoni Forest Trail",lat:33.3830,lng:126.6690,q:"Saryeoni+Forest+Jeju",badge:"hike",bt:"10 km · 2–3 hrs · +222m"},
+{n:3,key:"dombedon",time:"Dinner",name:"Dombedon — black pork BBQ",lat:33.5120,lng:126.5310,q:"Dombedon+Jeju",badge:"food"}
 ]},
-
-{id:"day5",num:5,title:"Jeju E-Bike + Sunrise Peak",date:"Apr 27 (Sun)",region:"Jeju",navClass:"jeju",
-transport:null,hotel:"Same as Day 4",
+{num:5,title:"Jeju E-Bike + Peak",date:"Apr 27 (Sun)",region:"Jeju",nc:"jeju",transport:null,hotel:{text:"Same as Day 4"},
 pois:[
-{n:1,key:"seongsan_port",time:"Morning",name:"Seongsan Port — ferry to Udo Island",lat:33.4590,lng:126.9420,search:"Seongsan+Port+Jeju+Udo+ferry"},
-{n:2,key:"udo_island",time:"AM",name:"🚴 E-bike Udo Island loop",lat:33.5020,lng:126.9520,search:"Udo+Island+Jeju+ebike",badge:"bike",badgeText:"15 km · 1.5–2 hrs · ~100m"},
-{n:3,key:"seongsan_ilchulbong",time:"Early PM",name:"🥾 Seongsan Ilchulbong (Sunrise Peak)",lat:33.4612,lng:126.9403,search:"Seongsan+Ilchulbong+Jeju",badge:"hike",badgeText:"1.8 km · 40–60 min · +142m"}
+{n:1,key:"seongsan_port",time:"Morning",name:"Seongsan Port — ferry to Udo",lat:33.4590,lng:126.9420,q:"Seongsan+Port+Udo+ferry"},
+{n:2,key:"udo_island",time:"AM",name:"🚴 E-bike Udo Island",lat:33.5020,lng:126.9520,q:"Udo+Island+Jeju",badge:"bike",bt:"15 km · 1.5–2 hrs · ~100m"},
+{n:3,key:"seongsan_ilchulbong",time:"Early PM",name:"🥾 Seongsan Ilchulbong",lat:33.4612,lng:126.9403,q:"Seongsan+Ilchulbong+Jeju",badge:"hike",bt:"1.8 km · 40–60 min · +142m"}
 ]},
-
-{id:"day6",num:6,title:"Jeju Coastal Day",date:"Apr 28 (Mon)",region:"Jeju",navClass:"jeju",
-transport:{text:"🚗 Rental car — return at end of day",detail:"Driving around southern and western Jeju. Return rental car at hotel or airport in the evening."},
-hotel:"Same as Day 4",
+{num:6,title:"Jeju Coastal Day",date:"Apr 28 (Mon)",region:"Jeju",nc:"jeju",
+transport:{text:"🚗 Rental car — return end of day",detail:"Driving southern and western Jeju."},
+hotel:{text:"Same as Day 4"},
 pois:[
-{n:1,key:"jusangjeolli",time:"Morning",name:"Daepo Jusangjeolli Cliff — basalt columns",lat:33.2380,lng:126.4250,search:"Daepo+Jusangjeolli+Cliff+Jeju"},
-{n:2,key:"olle_trail_7",time:"AM–PM",name:"🥾 Olle Trail Section 7 (Seogwipo coastal)",lat:33.2450,lng:126.5120,search:"Jeju+Olle+Trail+Section+7",badge:"hike",badgeText:"17.6 km full / 8–10 km partial · +288m"},
-{n:3,key:"osulloc",time:"PM",name:"O'sulloc Tea Museum + green tea fields",lat:33.3060,lng:126.2890,search:"Osulloc+Tea+Museum+Jeju"},
-{n:4,key:"hyeopjae",time:"PM",name:"Hyeopjae Beach",lat:33.3940,lng:126.2400,search:"Hyeopjae+Beach+Jeju"}
+{n:1,key:"jusangjeolli",time:"Morning",name:"Jusangjeolli Cliff — basalt columns",lat:33.2380,lng:126.4250,q:"Jusangjeolli+Cliff+Jeju"},
+{n:2,key:"olle_trail_7",time:"AM–PM",name:"🥾 Olle Trail Section 7",lat:33.2450,lng:126.5120,q:"Jeju+Olle+Trail+7",badge:"hike",bt:"17.6 km / partial 8–10 km · +288m"},
+{n:3,key:"osulloc",time:"PM",name:"O'sulloc Tea Museum",lat:33.3060,lng:126.2890,q:"Osulloc+Tea+Museum+Jeju"},
+{n:4,key:"hyeopjae",time:"PM",name:"Hyeopjae Beach",lat:33.3940,lng:126.2400,q:"Hyeopjae+Beach+Jeju"}
 ]},
-
-{id:"day7",num:7,title:"Fly to Busan",date:"Apr 29 (Tue)",region:"Busan",navClass:"busan",
-transport:{text:"✈ Jeju → Busan (~50 min)",detail:"Domestic flight from Jeju to Gimhae Airport, Busan. Taxi or metro to hotel."},
-hotel:'<a href="https://www.google.com/search?q=Park+Hyatt+Busan+hotel">Park Hyatt Busan</a> or <a href="https://www.google.com/search?q=Signiel+Busan+hotel">Signiel Busan</a> · Haeundae',
+{num:7,title:"Fly to Busan",date:"Apr 29 (Tue)",region:"Busan",nc:"busan",
+transport:{text:"✈ Jeju → Busan (~50 min)",detail:"Domestic flight to Gimhae Airport. Taxi or metro to hotel."},
+hotel:{text:'<a href="https://www.google.com/search?q=Park+Hyatt+Busan">Park Hyatt Busan</a> or <a href="https://www.google.com/search?q=Signiel+Busan">Signiel Busan</a> · Haeundae'},
 pois:[
-{n:1,key:"gimhae_airport",time:"Morning",name:"Gimhae Airport — arrive from Jeju",lat:35.1796,lng:128.9382,search:"Gimhae+Airport+Busan"},
-{n:2,key:"gamcheon",time:"PM",name:"Gamcheon Culture Village — colorful hillside art",lat:35.0975,lng:129.0107,search:"Gamcheon+Culture+Village+Busan"},
-{n:3,key:"haeundae",time:"PM",name:"Haeundae Beach — walk along the coast",lat:35.1587,lng:129.1604,search:"Haeundae+Beach+Busan"},
-{n:4,key:"amsogalbi",time:"Dinner",name:"Haeundae Amsogalbi-jip — premium beef galbi",lat:35.1590,lng:129.1610,search:"Haeundae+Amsogalbi+Busan",badge:"food"}
+{n:1,key:"gimhae_airport",time:"Morning",name:"Gimhae Airport — arrive",lat:35.1796,lng:128.9382,q:"Gimhae+Airport+Busan"},
+{n:2,key:"gamcheon",time:"PM",name:"Gamcheon Culture Village",lat:35.0975,lng:129.0107,q:"Gamcheon+Culture+Village+Busan"},
+{n:3,key:"haeundae",time:"PM",name:"Haeundae Beach",lat:35.1587,lng:129.1604,q:"Haeundae+Beach+Busan"},
+{n:4,key:"amsogalbi",time:"Dinner",name:"Amsogalbi-jip — beef galbi",lat:35.1590,lng:129.1610,q:"Haeundae+Amsogalbi+Busan",badge:"food"}
 ]},
-
-{id:"day8",num:8,title:"Busan + Gyeongju",date:"Apr 30 (Wed)",region:"Busan–Gyeongju",navClass:"busan",
-transport:{text:"🚗 Taxi/rental to Gyeongju (~1 hr each way)",detail:"Day trip to Gyeongju from Busan. Taxi, rental car, or intercity bus. Return to Busan in the evening."},
-hotel:"Same as Day 7 (drive back to Busan)",
+{num:8,title:"Busan + Gyeongju",date:"Apr 30 (Wed)",region:"Busan–Gyeongju",nc:"busan",
+transport:{text:"🚗 Taxi or rental to Gyeongju (~1 hr each way)",detail:"Day trip. Return to Busan evening."},
+hotel:{text:"Same as Day 7"},
 pois:[
-{n:1,key:"igidae",time:"Morning",name:"🥾 Igidae Coastal Walk — cliff-edge, ocean views",lat:35.1180,lng:129.1230,search:"Igidae+Coastal+Walk+Busan",badge:"hike",badgeText:"5 km · 1.5–2 hrs · +236m"},
-{n:2,key:"yonggungsa",time:"AM",name:"Haedong Yonggungsa Temple — seaside temple",lat:35.1884,lng:129.2233,search:"Haedong+Yonggungsa+Temple+Busan"},
-{n:3,key:"bulguksa",time:"PM",name:"Bulguksa Temple (UNESCO)",lat:35.7900,lng:129.3320,search:"Bulguksa+Temple+Gyeongju"},
-{n:4,key:"seokguram",time:"PM",name:"🥾 Seokguram Grotto — forest walk up",lat:35.7958,lng:129.3493,search:"Seokguram+Grotto+Gyeongju",badge:"hike",badgeText:"3 km · 1–1.5 hrs · +382m"},
-{n:5,key:"hwangridan",time:"Evening",name:"Hwangridan-gil — cafes & restaurants",lat:35.8340,lng:129.2180,search:"Hwangridan+gil+Gyeongju+cafes"},
-{n:6,key:"wolji",time:"Night",name:"Wolji Pond — stunning night reflections",lat:35.8344,lng:129.2268,search:"Wolji+Pond+Gyeongju+night"}
+{n:1,key:"igidae",time:"Morning",name:"🥾 Igidae Coastal Walk",lat:35.1180,lng:129.1230,q:"Igidae+Coastal+Walk+Busan",badge:"hike",bt:"5 km · 1.5–2 hrs · +236m"},
+{n:2,key:"yonggungsa",time:"AM",name:"Yonggungsa Temple — seaside",lat:35.1884,lng:129.2233,q:"Haedong+Yonggungsa+Busan"},
+{n:3,key:"bulguksa",time:"PM",name:"Bulguksa Temple (UNESCO)",lat:35.7900,lng:129.3320,q:"Bulguksa+Temple+Gyeongju"},
+{n:4,key:"seokguram",time:"PM",name:"🥾 Seokguram Grotto — forest walk",lat:35.7958,lng:129.3493,q:"Seokguram+Grotto+Gyeongju",badge:"hike",bt:"3 km · 1–1.5 hrs · +382m"},
+{n:5,key:"hwangridan",time:"Evening",name:"Hwangridan-gil — cafes",lat:35.8340,lng:129.2180,q:"Hwangridan+gil+Gyeongju"},
+{n:6,key:"wolji",time:"Night",name:"Wolji Pond — night reflections",lat:35.8344,lng:129.2268,q:"Wolji+Pond+Gyeongju+night"}
 ]},
-
-{id:"day9",num:9,title:"KTX to Seoul",date:"May 1 (Thu)",region:"Busan → Seoul",navClass:"travel",
-transport:{text:"🚄 KTX Busan → Seoul (2.5 hrs)",detail:"High-speed train from Busan Station to Seoul Station. Book via Korail app. Window seat recommended for countryside views."},
-hotel:"Same Seoul hotel or try Hongdae/Mapo area",
+{num:9,title:"KTX to Seoul",date:"May 1 (Thu)",region:"Busan → Seoul",nc:"travel",
+transport:{text:"🚄 KTX Busan → Seoul (2.5 hrs)",detail:"High-speed train. Book via Korail app. Window seat for views."},
+hotel:{text:"Same Seoul hotel or Hongdae/Mapo area"},
 pois:[
-{n:1,key:"jagalchi",time:"Morning",name:"Jagalchi Market — people-watching",lat:35.0968,lng:129.0306,search:"Jagalchi+Market+Busan"},
-{n:2,key:"biff",time:"AM",name:"BIFF Square — street food & film history",lat:35.0983,lng:129.0290,search:"BIFF+Square+Busan"},
-{n:3,key:"blueline",time:"AM",name:"Blueline Park — sky capsule along the coast",lat:35.1630,lng:129.1870,search:"Haeundae+Blueline+Park+sky+capsule"},
-{n:4,key:"gukje",time:"Lunch",name:"Gukje Market — milmyeon (cold noodles)",lat:35.1007,lng:129.0288,search:"Gukje+Market+Busan",badge:"food"},
-{n:5,key:"busan_station",time:"PM",name:"🚄 KTX from Busan Station",lat:35.1152,lng:129.0410,search:"Busan+Station+KTX"},
-{n:6,key:"hongdae",time:"Dinner",name:"Hongdae — lively street scene & dinner",lat:37.5563,lng:126.9237,search:"Hongdae+Seoul+nightlife"}
+{n:1,key:"jagalchi",time:"Morning",name:"Jagalchi Market",lat:35.0968,lng:129.0306,q:"Jagalchi+Market+Busan"},
+{n:2,key:"biff",time:"AM",name:"BIFF Square — street food",lat:35.0983,lng:129.0290,q:"BIFF+Square+Busan"},
+{n:3,key:"blueline",time:"AM",name:"Blueline Park — sky capsule",lat:35.1630,lng:129.1870,q:"Blueline+Park+Busan+sky+capsule"},
+{n:4,key:"gukje",time:"Lunch",name:"Gukje Market — milmyeon",lat:35.1007,lng:129.0288,q:"Gukje+Market+Busan",badge:"food"},
+{n:5,key:"busan_station",time:"PM",name:"🚄 KTX from Busan Station",lat:35.1152,lng:129.0410,q:"Busan+Station+KTX"},
+{n:6,key:"hongdae",time:"Dinner",name:"Hongdae — nightlife & dinner",lat:37.5563,lng:126.9237,q:"Hongdae+Seoul"}
 ]},
-
-{id:"day10",num:10,title:"Bukhansan Hike + Culture",date:"May 2 (Fri)",region:"Seoul area",navClass:"seoul",
-transport:null,hotel:"Same as Day 9",
+{num:10,title:"Bukhansan Hike",date:"May 2 (Fri)",region:"Seoul area",nc:"seoul",transport:null,hotel:{text:"Same as Day 9"},
 pois:[
-{n:1,key:"bukhansan",time:"Morning",name:"🥾 Bukhansan — Bukhansanseong trail",lat:37.6590,lng:126.9620,search:"Bukhansan+Bukhansanseong+trail+Seoul",badge:"hike",badgeText:"6.8 km · 3–4 hrs · +500m"},
-{n:2,key:"icheon",time:"PM",name:"Icheon Ceramic Festival (Apr 24–May 5)",lat:37.2792,lng:127.4427,search:"Icheon+Ceramic+Festival+Korea"}
+{n:1,key:"bukhansan",time:"Morning",name:"🥾 Bukhansan — Bukhansanseong",lat:37.6590,lng:126.9620,q:"Bukhansan+hiking+Seoul",badge:"hike",bt:"6.8 km · 3–4 hrs · +500m"},
+{n:2,key:"icheon",time:"PM",name:"Icheon Ceramic Festival",lat:37.2792,lng:127.4427,q:"Icheon+Ceramic+Festival"}
 ]},
-
-{id:"day11",num:11,title:"Seoul Free Day",date:"May 3 (Sat)",region:"Seoul",navClass:"seoul",
-transport:null,hotel:"Same as Day 9",
+{num:11,title:"Seoul Free Day",date:"May 3 (Sat)",region:"Seoul",nc:"seoul",transport:null,hotel:{text:"Same as Day 9"},
 pois:[
-{n:1,key:"naksan",time:"Morning",name:"Naksan Park — city views",lat:37.5800,lng:127.0080,search:"Naksan+Park+Seoul"},
-{n:2,key:"ihwa",time:"AM",name:"Ihwa Mural Village",lat:37.5805,lng:127.0063,search:"Ihwa+Mural+Village+Seoul"},
-{n:3,key:"gwangjang",time:"Lunch",name:"Gwangjang Market — bindaetteok, kalguksu",lat:37.5701,lng:126.9995,search:"Gwangjang+Market+Seoul+food",badge:"food"},
-{n:4,key:"ddp",time:"PM",name:"Dongdaemun Design Plaza",lat:37.5671,lng:127.0095,search:"Dongdaemun+Design+Plaza+Seoul"},
-{n:5,key:"han_river_evening",time:"Evening",name:"Han River — evening walk / chimaek",lat:37.5267,lng:126.9340,search:"Han+River+Seoul+evening"}
+{n:1,key:"naksan",time:"Morning",name:"Naksan Park — city views",lat:37.5800,lng:127.0080,q:"Naksan+Park+Seoul"},
+{n:2,key:"ihwa",time:"AM",name:"Ihwa Mural Village",lat:37.5805,lng:127.0063,q:"Ihwa+Mural+Village+Seoul"},
+{n:3,key:"gwangjang",time:"Lunch",name:"Gwangjang Market — street food",lat:37.5701,lng:126.9995,q:"Gwangjang+Market+Seoul",badge:"food"},
+{n:4,key:"ddp",time:"PM",name:"Dongdaemun Design Plaza",lat:37.5671,lng:127.0095,q:"Dongdaemun+Design+Plaza+Seoul"},
+{n:5,key:"han_river_evening",time:"Evening",name:"Han River — chimaek & sunset",lat:37.5267,lng:126.9340,q:"Han+River+Seoul+evening"}
 ]},
-
-{id:"day12",num:12,title:"Depart",date:"May 4 (Sun)",region:"Seoul → Home",navClass:"travel",
-transport:{text:"✈ Incheon Airport — depart 17:50",detail:"AREX train from Seoul Station to Incheon Airport (~50 min) or taxi (~1 hr). Arrive 2.5–3 hrs before flight."},
+{num:12,title:"Depart",date:"May 4 (Sun)",region:"Seoul → Home",nc:"travel",
+transport:{text:"✈ Incheon Airport — depart 17:50",detail:"AREX from Seoul Station (~50 min) or taxi. Arrive 2.5–3 hrs early."},
 hotel:null,
 pois:[
-{n:1,key:"hotel_seoul",time:"Morning",name:"Sleep in, pack, last brunch near hotel",lat:37.5710,lng:126.9780,search:"Seoul+hotel+brunch"},
-{n:2,key:"incheon_depart",time:"~14:00",name:"Head to Incheon Airport",lat:37.4602,lng:126.4407,search:"Incheon+Airport"}
+{n:1,key:"hotel_seoul",time:"Morning",name:"Sleep in, pack, last brunch",lat:37.5710,lng:126.9780,q:"Seoul+hotel"},
+{n:2,key:"incheon_depart",time:"~14:00",name:"Head to Incheon Airport",lat:37.4602,lng:126.4407,q:"Incheon+Airport"}
 ]}
 ];
 
-// Missing items data
 const MISSING=[
 {tier:"TIER 1: Don't Skip These",cls:"t1",items:[
-{title:'<a href="https://www.google.com/search?q=DMZ+tour+South+Korea">DMZ Tour</a> — Half day from Seoul',desc:'The most unique-to-Korea experience. Third Infiltration Tunnel, Dora Observatory overlooking North Korea. Guided tour required (~$40/person). Book 1–2 weeks ahead.'},
-{title:'<a href="https://www.google.com/search?q=Dragon+Hill+Spa+Seoul+jjimjilbang">Jjimjilbang / Korean Spa</a> — Any evening',desc:'Communal baths, themed saunas (clay, ice, salt rooms), heated floors, slow-cooked eggs. Under $15 entry. Dragon Hill Spa in Yongsan is the classic.'},
-{title:'<a href="https://www.google.com/search?q=hanbok+rental+Gyeongbokgung+Seoul">Hanbok at Gyeongbokgung</a> — During Day 2',desc:'Rent traditional Korean dress ($10–50/person). Wearing hanbok gives FREE palace entry. Great photos. Zero schedule change needed.'},
-{title:'<a href="https://www.google.com/search?q=Samgwangsa+Temple+Busan+lanterns">Samgwangsa Temple Lanterns</a> — Busan days',desc:'40,000 lotus lanterns lit for Buddha\'s Birthday season. Free, spectacular, happening during your visit.'}
-]},
+{t:'<a href="https://www.google.com/search?q=DMZ+tour+South+Korea">DMZ Tour</a> — Half day from Seoul',d:'The most unique-to-Korea experience. Third Infiltration Tunnel, Dora Observatory. ~$40/person. Book 1–2 weeks ahead.'},
+{t:'<a href="https://www.google.com/search?q=Dragon+Hill+Spa+Seoul+jjimjilbang">Jjimjilbang / Korean Spa</a> — Any evening',d:'Communal baths, themed saunas, heated floors, slow-cooked eggs. Under $15. Dragon Hill Spa in Yongsan.'},
+{t:'<a href="https://www.google.com/search?q=hanbok+rental+Gyeongbokgung+Seoul">Hanbok at Gyeongbokgung</a> — Day 2',d:'Rent Korean dress ($10–50). Free palace entry. Great photos. Zero schedule change.'},
+{t:'<a href="https://www.google.com/search?q=Samgwangsa+Temple+Busan+lanterns">Samgwangsa Temple Lanterns</a> — Busan',d:'40,000 lotus lanterns for Buddha\'s Birthday. Free, spectacular, during your visit.'}]},
 {tier:"TIER 2: Highly Recommended",cls:"t2",items:[
-{title:'<a href="https://www.google.com/search?q=Jeonju+Hanok+Village+South+Korea">Jeonju Hanok Village</a> — Full day trip',desc:'Korea\'s food capital, birthplace of bibimbap. 800+ traditional hanok houses. 1.5 hrs by KTX from Seoul.'},
-{title:'<a href="https://www.google.com/search?q=Korean+cooking+class+Seoul">Korean Cooking Class</a> — Half day',desc:'Market tour + hands-on cooking of bibimbap, kimchi, japchae. ~$50/person, 3–4 hours.'},
-{title:'<a href="https://www.google.com/search?q=Suwon+Hwaseong+Fortress+South+Korea">Suwon Hwaseong Fortress</a> — Half day',desc:'UNESCO World Heritage, 30–50 min from Seoul. 5.7 km wall walk past gates and watchtowers.'},
-{title:'<a href="https://www.google.com/search?q=Korean+temple+stay+experience">Temple Stay</a> — Overnight',desc:'Sleep in a Buddhist monastery, 3 AM chanting, temple food, meditation. ~$50–75/night. Transformative but intense.'}
-]},
+{t:'<a href="https://www.google.com/search?q=Jeonju+Hanok+Village">Jeonju Hanok Village</a> — Day trip',d:'Korea\'s food capital, birthplace of bibimbap. 800+ hanok houses. 1.5 hrs KTX.'},
+{t:'<a href="https://www.google.com/search?q=Korean+cooking+class+Seoul">Korean Cooking Class</a> — Half day',d:'Market tour + cooking bibimbap, kimchi. ~$50/person, 3–4 hours.'},
+{t:'<a href="https://www.google.com/search?q=Suwon+Hwaseong+Fortress">Suwon Hwaseong Fortress</a> — Half day',d:'UNESCO site, 30 min from Seoul. 5.7 km wall walk.'},
+{t:'<a href="https://www.google.com/search?q=Korean+temple+stay">Temple Stay</a> — Overnight',d:'Buddhist monastery, 3 AM chanting, temple food. ~$50–75/night.'}]},
 {tier:"TIER 3: If Time Allows",cls:"t3",items:[
-{title:'<a href="https://www.google.com/search?q=Damyang+Juknokwon+bamboo+forest+Korea">Damyang Bamboo Forest</a> + <a href="https://www.google.com/search?q=Damyang+Metasequoia+road">Metasequoia Road</a>',desc:'Famous bamboo forest + stunning tree-lined boulevard. Can combine with Jeonju.'},
-{title:'<a href="https://www.google.com/search?q=Seoraksan+National+Park+Korea">Seoraksan National Park</a>',desc:'Korea\'s most dramatic mountain scenery. 3+ hours from Seoul. You already have plenty of trails though.'},
-{title:'<a href="https://www.google.com/search?q=Andong+Hahoe+Village+Korea+UNESCO">Andong Hahoe Village</a>',desc:'UNESCO living Joseon-era village, 600+ years old. Works as a stop between Gyeongju and Seoul.'},
-{title:'<a href="https://www.google.com/search?q=Suncheon+Bay+National+Garden+Korea">Suncheon Bay Garden</a>',desc:'National garden + coastal wetlands. Tulips, azaleas in bloom late April. Far south though.'}
-]},
+{t:'<a href="https://www.google.com/search?q=Damyang+bamboo+forest+Korea">Damyang Bamboo Forest</a> + <a href="https://www.google.com/search?q=Damyang+Metasequoia+road">Metasequoia Road</a>',d:'Famous bamboo forest + tree-lined boulevard. Combine with Jeonju.'},
+{t:'<a href="https://www.google.com/search?q=Seoraksan+National+Park">Seoraksan National Park</a>',d:'Korea\'s most dramatic mountains. 3+ hrs from Seoul.'},
+{t:'<a href="https://www.google.com/search?q=Andong+Hahoe+Village+UNESCO">Andong Hahoe Village</a>',d:'UNESCO Joseon-era village, 600+ years. Between Gyeongju and Seoul.'},
+{t:'<a href="https://www.google.com/search?q=Suncheon+Bay+National+Garden">Suncheon Bay Garden</a>',d:'National garden + wetlands. Tulips, azaleas in late April.'}]},
 {tier:"Zero-Effort Food Additions",cls:"t4",items:[
-{title:'<a href="https://www.google.com/search?q=chimaek+fried+chicken+beer+Han+River+Seoul">Chimaek by the Han River</a>',desc:'Fried chicken + beer on mats by the river at night. Peak Korean lifestyle. Do this on your Han River evening.'},
-{title:'<a href="https://www.google.com/search?q=Tosokchon+samgyetang+Seoul">Samgyetang at Tosokchon</a>',desc:'Ginseng chicken soup near Gyeongbokgung. Seafood-free. Perfect lunch on your palace day.'}
-]}
+{t:'<a href="https://www.google.com/search?q=chimaek+Han+River+Seoul">Chimaek by the Han River</a>',d:'Fried chicken + beer on mats by the river at night. Peak Korean lifestyle.'},
+{t:'<a href="https://www.google.com/search?q=Tosokchon+samgyetang+Seoul">Samgyetang at Tosokchon</a>',d:'Ginseng chicken soup near Gyeongbokgung. Seafood-free. Perfect palace-day lunch.'}]}
 ];
 
 let currentPage=0;
-const totalPages=DAYS.length+1; // days + missing page
-const maps={}; // store map refs by day num
+const totalPages=DAYS.length+2; // cover + 12 days + missing
+const mapInstances={};
 
-function goPage(idx){
-  idx=Math.max(0,Math.min(totalPages-1,idx));
-  currentPage=idx;
-  document.getElementById('pages-container').style.transform=`translateX(-${idx*100}%)`;
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-  // scroll active nav btn into view
-  const btns=document.querySelectorAll('.nav-btn');
-  if(btns[idx])btns[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  // invalidate map size after transition
-  setTimeout(()=>{
-    const day=DAYS[idx];
-    if(day && maps[day.num]){maps[day.num].invalidateSize()}
-  },400);
-}
-
-function showInfo(key,title){
-  document.getElementById('modal-title').textContent=title;
+function gmapsUrl(q){return `https://www.google.com/maps/search/?api=1&query=${q.replace(/\+/g,' ')}+South+Korea`}
+function showInfo(key,name){
+  document.getElementById('modal-title').textContent=name.replace(/🥾|🚴/g,'').trim();
   document.getElementById('modal-body').textContent=DESC[key]||'No description available.';
   document.getElementById('modal-overlay').classList.add('show');
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
 
-function gmapsUrl(search){return `https://www.google.com/maps/search/?api=1&query=${search.replace(/\+/g,' ')}+South+Korea`}
-
-function createNumberedIcon(n){
-  return L.divIcon({className:'',html:`<div class="n-icon">${n}</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
+function goPage(idx){
+  idx=Math.max(0,Math.min(totalPages-1,idx));
+  currentPage=idx;
+  document.querySelectorAll('.page').forEach((p,i)=>{
+    p.classList.toggle('active',i===idx);
+  });
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  const btns=document.querySelectorAll('.nav-btn');
+  if(btns[idx])btns[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  // Fix map rendering for newly visible page
+  if(idx>0 && idx<=DAYS.length){
+    const dayNum=DAYS[idx-1].num;
+    setTimeout(()=>{if(mapInstances[dayNum])mapInstances[dayNum].invalidateSize()},50);
+  }
+  window.scrollTo(0,0);
 }
 
-function buildPages(){
-  const container=document.getElementById('pages-container');
+function switchTab(dayNum,tabName){
+  document.querySelectorAll(`[data-day="${dayNum}"] .tab-btn`).forEach(b=>b.classList.toggle('active',b.dataset.tab===tabName));
+  document.querySelectorAll(`[data-day="${dayNum}"] .tab-content`).forEach(c=>c.classList.toggle('active',c.dataset.tab===tabName));
+  if(tabName==='itinerary'){
+    setTimeout(()=>{if(mapInstances[dayNum])mapInstances[dayNum].invalidateSize()},50);
+  }
+}
+
+function build(){
+  const app=document.getElementById('app');
   const nav=document.getElementById('nav-scroll');
 
+  // === COVER PAGE ===
+  const cover=document.createElement('div');
+  cover.className='page active';
+  cover.innerHTML=`<div class="cover">
+    <div class="flag">🇰🇷</div>
+    <h1>Yaniv Family in South Korea</h1>
+    <div class="family">Eran · Michal · Jonathan · Ophir</div>
+    <div class="dates">April 23 – May 4, 2026 · 12 Days</div>
+    <div class="saying-kr">가는 말이 고와야 오는 말이 곱다</div>
+    <div class="saying">"If the outgoing words are beautiful,<br>the incoming words will be beautiful too."</div>
+    <div class="saying-credit">— Korean proverb</div>
+    <div class="route">
+      <span class="rseg">Seoul (3N)</span><span class="rarr">✈</span>
+      <span class="rseg">Jeju (3N)</span><span class="rarr">✈</span>
+      <span class="rseg">Busan (2N)</span><span class="rarr">🚄</span>
+      <span class="rseg">Seoul (3N)</span>
+    </div>
+  </div>`;
+  app.appendChild(cover);
+  const coverBtn=document.createElement('button');
+  coverBtn.className='nav-btn active';coverBtn.textContent='Home';coverBtn.onclick=()=>goPage(0);
+  nav.appendChild(coverBtn);
+
+  // === DAY PAGES ===
   DAYS.forEach((day,idx)=>{
-    // Nav button
     const btn=document.createElement('button');
-    btn.className=`nav-btn ${day.navClass}`;
-    btn.textContent=day.num<=12?`Day ${day.num}`:'Missing?';
-    btn.onclick=()=>goPage(idx);
+    btn.className=`nav-btn ${day.nc}`;btn.textContent=`Day ${day.num}`;btn.onclick=()=>goPage(idx+1);
     nav.appendChild(btn);
 
-    // Page
     const page=document.createElement('div');
     page.className='page';
+    page.dataset.day=day.num;
 
-    let html=`<div class="page-header"><span class="day-num">${day.num}</span><h2>${day.title}</h2><div class="sub">${day.date} · ${day.region}</div></div>`;
+    // Header
+    let h=`<div class="pg-hdr"><span class="dn">${day.num}</span><h2>${day.title}</h2><div class="sub">${day.date} · ${day.region}</div></div>`;
 
-    // Transport section
-    if(day.transport){
-      html+=`<div class="section-box transport"><h4>🚌 Transport</h4><div class="detail">${day.transport.text}<br><span style="font-size:12px;color:#888">${day.transport.detail}</span></div></div>`;
-    }
+    // Tabs
+    h+=`<div class="tabs">
+      <button class="tab-btn active" data-tab="itinerary" onclick="switchTab(${day.num},'itinerary')">📍 Itinerary</button>
+      <button class="tab-btn" data-tab="hotel" onclick="switchTab(${day.num},'hotel')">🏨 Hotel</button>
+      <button class="tab-btn" data-tab="transport" onclick="switchTab(${day.num},'transport')">🚌 Transport</button>
+    </div>`;
 
-    // Map
-    html+=`<div class="map-wrap"><div id="map-${day.num}" class="map"></div></div>`;
-
-    // POI list
-    html+=`<div class="poi-list">`;
+    // Tab: Itinerary
+    h+=`<div class="tab-content active" data-tab="itinerary">`;
+    h+=`<div class="map-wrap"><div id="map-${day.num}" class="map"></div></div>`;
+    h+=`<div class="poi-list">`;
     day.pois.forEach(p=>{
       let badges='';
-      if(p.badge==='hike')badges=`<span class="badge badge-hike">🥾 ${p.badgeText||'Hike'}</span>`;
-      else if(p.badge==='bike')badges=`<span class="badge badge-bike">🚴 ${p.badgeText||'E-Bike'}</span>`;
-      else if(p.badge==='food')badges=`<span class="badge badge-food">🍽️ Restaurant</span>`;
-
-      html+=`<div class="poi-item">
-        <div class="poi-num">${p.n}</div>
-        <div class="poi-body">
-          ${p.time?`<span class="poi-time">${p.time}</span>`:''}
-          <div class="poi-name"><a href="https://www.google.com/search?q=${p.search}" target="_blank">${p.name}</a></div>
-          ${badges?`<div class="poi-badges">${badges}</div>`:''}
-          <div class="poi-actions">
-            <button class="poi-action-btn" onclick="showInfo('${p.key}','${p.name.replace(/'/g,"\\'")}')">ℹ️ Info</button>
-            <a class="poi-action-btn gmaps" href="${gmapsUrl(p.search)}" target="_blank">📍 Map</a>
-          </div>
-        </div>
-      </div>`;
+      if(p.badge==='hike')badges=`<span class="badge badge-hike">🥾 ${p.bt||'Hike'}</span>`;
+      else if(p.badge==='bike')badges=`<span class="badge badge-bike">🚴 ${p.bt||'E-Bike'}</span>`;
+      else if(p.badge==='food')badges=`<span class="badge badge-food">🍽️</span>`;
+      const cleanName=p.name.replace(/🥾|🚴/g,'').trim();
+      h+=`<div class="poi-item"><div class="poi-num">${p.n}</div><div class="poi-body">
+        ${p.time?`<span class="poi-time">${p.time}</span>`:''}
+        <div class="poi-name"><a href="https://www.google.com/search?q=${p.q}" target="_blank">${p.name}</a></div>
+        ${badges?`<div class="poi-badges">${badges}</div>`:''}
+        <div class="poi-actions">
+          <button class="poi-action-btn" onclick="showInfo('${p.key}','${cleanName.replace(/'/g,"\\'")}')">ℹ️ Info</button>
+          <a class="poi-action-btn gmaps" href="${gmapsUrl(p.q)}" target="_blank">📍 Map</a>
+        </div></div></div>`;
     });
-    html+=`</div>`;
+    h+=`</div></div>`;
 
-    // Hotel section
+    // Tab: Hotel
+    h+=`<div class="tab-content" data-tab="hotel"><div class="tab-inner">`;
     if(day.hotel){
-      html+=`<div class="section-box hotel"><h4>🏨 Hotel</h4><div class="detail">${day.hotel}</div></div>`;
+      h+=`<div class="info-card hotel-card"><h4>🏨 Accommodation</h4><div class="detail">${day.hotel.text}</div>
+        <div class="voucher-area"><h5>📎 Booking Confirmation</h5><div class="placeholder">No voucher uploaded yet</div></div></div>`;
+    }else{
+      h+=`<div class="info-card hotel-card"><h4>🏨 Accommodation</h4><div class="detail">No hotel needed (departure day)</div></div>`;
     }
+    h+=`</div></div>`;
 
-    html+=`<div class="swipe-hint">← swipe or use arrows to navigate →</div>`;
-    page.innerHTML=html;
-    container.appendChild(page);
+    // Tab: Transport
+    h+=`<div class="tab-content" data-tab="transport"><div class="tab-inner">`;
+    if(day.transport){
+      h+=`<div class="info-card transport-card"><h4>🚌 Transport</h4><div class="detail"><strong>${day.transport.text}</strong><br><span style="color:#888">${day.transport.detail}</span></div>
+        <div class="voucher-area"><h5>📎 Tickets / Confirmation</h5><div class="placeholder">No voucher uploaded yet</div></div></div>`;
+    }else{
+      h+=`<div class="info-card transport-card"><h4>🚌 Transport</h4><div class="detail">No major transport — local subway/taxi in ${day.region}</div></div>`;
+    }
+    h+=`</div></div>`;
+
+    page.innerHTML=h;
+    app.appendChild(page);
   });
 
-  // Missing page
+  // === MISSING PAGE ===
   const misBtn=document.createElement('button');
-  misBtn.className='nav-btn';
-  misBtn.textContent='Missing?';
-  misBtn.style.borderBottom='2px solid #f39c12';
-  misBtn.onclick=()=>goPage(DAYS.length);
+  misBtn.className='nav-btn';misBtn.textContent='Missing?';misBtn.style.borderBottom='2px solid #f39c12';
+  misBtn.onclick=()=>goPage(DAYS.length+1);
   nav.appendChild(misBtn);
 
   const misPage=document.createElement('div');
   misPage.className='page';
-  let mhtml=`<div class="missing-page"><h2>What We'd Be Missing</h2>`;
+  let mh=`<div class="missing-page"><h2>What We'd Be Missing</h2>`;
   MISSING.forEach(t=>{
-    mhtml+=`<div class="tier-title ${t.cls}">${t.tier}</div>`;
-    t.items.forEach(i=>{
-      mhtml+=`<div class="m-item"><div class="m-title">${i.title}</div><div class="m-desc">${i.desc}</div></div>`;
-    });
+    mh+=`<div class="tier-title ${t.cls}">${t.tier}</div>`;
+    t.items.forEach(i=>mh+=`<div class="m-item"><div class="m-title">${i.t}</div><div class="m-desc">${i.d}</div></div>`);
   });
-  mhtml+=`</div>`;
-  misPage.innerHTML=mhtml;
-  container.appendChild(misPage);
+  mh+=`</div>`;
+  misPage.innerHTML=mh;
+  app.appendChild(misPage);
 
   // Init maps
   setTimeout(()=>{
     DAYS.forEach(day=>{
-      const m=L.map(`map-${day.num}`,{zoomControl:true,scrollWheelZoom:false}).setView([36,127.8],7);
-      maps[day.num]=m;
+      const el=document.getElementById(`map-${day.num}`);
+      if(!el)return;
+      const m=L.map(el,{zoomControl:true,scrollWheelZoom:false}).setView([36,127.8],7);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OSM © CARTO',maxZoom:19}).addTo(m);
+      mapInstances[day.num]=m;
       const pts=[];
       day.pois.forEach(p=>{
-        L.marker([p.lat,p.lng],{icon:createNumberedIcon(p.n)}).addTo(m).bindPopup(`<b>${p.n}. ${p.name.replace(/<[^>]*>/g,'')}</b>`);
+        const icon=L.divIcon({className:'',html:`<div class="n-icon">${p.n}</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
+        L.marker([p.lat,p.lng],{icon}).addTo(m).bindPopup(`<b>${p.n}. ${p.name.replace(/<[^>]*>/g,'').replace(/🥾|🚴/g,'')}</b>`);
         pts.push([p.lat,p.lng]);
       });
       if(pts.length>1){
         L.polyline(pts,{color:'#e74c3c',weight:3,opacity:.6,dashArray:'8,8'}).addTo(m);
         m.fitBounds(L.latLngBounds(pts).pad(.2));
-      }else if(pts.length===1){
-        m.setView(pts[0],13);
-      }
+      }else if(pts.length===1) m.setView(pts[0],13);
     });
-  },200);
-
-  // Set first page active
-  goPage(0);
+  },100);
 }
 
-// Swipe support
-let touchStartX=0,touchEndX=0;
-document.addEventListener('touchstart',e=>{touchStartX=e.changedTouches[0].screenX},{passive:true});
-document.addEventListener('touchend',e=>{
-  touchEndX=e.changedTouches[0].screenX;
-  const diff=touchStartX-touchEndX;
-  if(Math.abs(diff)>60){
-    if(diff>0)goPage(currentPage+1);
-    else goPage(currentPage-1);
-  }
-},{passive:true});
-// Keyboard
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')goPage(currentPage+1);
-  if(e.key==='ArrowLeft')goPage(currentPage-1);
-  if(e.key==='Escape')closeModal();
-});
+// Swipe
+let tx=0;
+document.addEventListener('touchstart',e=>{tx=e.changedTouches[0].screenX},{passive:true});
+document.addEventListener('touchend',e=>{const d=tx-e.changedTouches[0].screenX;if(Math.abs(d)>60){d>0?goPage(currentPage+1):goPage(currentPage-1)}},{passive:true});
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')goPage(currentPage+1);if(e.key==='ArrowLeft')goPage(currentPage-1);if(e.key==='Escape')closeModal()});
 
-document.addEventListener('DOMContentLoaded',buildPages);
+document.addEventListener('DOMContentLoaded',build);
 </script>
 </body>
 </html>
