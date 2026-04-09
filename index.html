@@ -328,6 +328,7 @@ const MISSING=[
 
 let currentPage=0;
 const totalPages=DAYS.length+1; // days + missing page
+const maps={}; // store map refs by day num
 
 function goPage(idx){
   idx=Math.max(0,Math.min(totalPages-1,idx));
@@ -337,6 +338,11 @@ function goPage(idx){
   // scroll active nav btn into view
   const btns=document.querySelectorAll('.nav-btn');
   if(btns[idx])btns[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  // invalidate map size after transition
+  setTimeout(()=>{
+    const day=DAYS[idx];
+    if(day && maps[day.num]){maps[day.num].invalidateSize()}
+  },400);
 }
 
 function showInfo(key,title){
@@ -346,7 +352,7 @@ function showInfo(key,title){
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
 
-function gmapsUrl(lat,lng,name){return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+function gmapsUrl(search){return `https://www.google.com/maps/search/?api=1&query=${search.replace(/\+/g,' ')}+South+Korea`}
 
 function createNumberedIcon(n){
   return L.divIcon({className:'',html:`<div class="n-icon">${n}</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
@@ -394,7 +400,7 @@ function buildPages(){
           ${badges?`<div class="poi-badges">${badges}</div>`:''}
           <div class="poi-actions">
             <button class="poi-action-btn" onclick="showInfo('${p.key}','${p.name.replace(/'/g,"\\'")}')">ℹ️ Info</button>
-            <a class="poi-action-btn gmaps" href="${gmapsUrl(p.lat,p.lng,p.name)}" target="_blank">📍 Map</a>
+            <a class="poi-action-btn gmaps" href="${gmapsUrl(p.search)}" target="_blank">📍 Map</a>
           </div>
         </div>
       </div>`;
@@ -436,6 +442,7 @@ function buildPages(){
   setTimeout(()=>{
     DAYS.forEach(day=>{
       const m=L.map(`map-${day.num}`,{zoomControl:true,scrollWheelZoom:false}).setView([36,127.8],7);
+      maps[day.num]=m;
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OSM © CARTO',maxZoom:19}).addTo(m);
       const pts=[];
       day.pois.forEach(p=>{
