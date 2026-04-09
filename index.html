@@ -107,6 +107,18 @@ body{padding-bottom:70px;overflow-x:hidden}
 .m-item .m-title a{color:#5dade2;text-decoration:none}
 .m-item .m-desc{font-size:13px;color:#aaa;line-height:1.5}
 
+/* Todo page */
+.todo-page{padding:20px 16px}
+.todo-page h2{font-size:22px;color:#fff;margin-bottom:16px;border-bottom:2px solid #2ecc71;padding-bottom:10px}
+.todo-cat{font-size:15px;color:#2ecc71;font-weight:bold;margin:18px 0 8px}
+.todo-item{display:flex;align-items:flex-start;gap:10px;padding:12px;background:#16163a;border-radius:10px;margin-bottom:6px}
+.todo-item.done{opacity:.5}
+.todo-item.done .todo-text{text-decoration:line-through}
+.todo-cb{width:22px;height:22px;min-width:22px;accent-color:#2ecc71;cursor:pointer;margin-top:2px}
+.todo-body{flex:1}
+.todo-text{font-size:14px;color:#ddd;line-height:1.4}
+.todo-when{font-size:12px;color:#888;margin-top:3px}
+
 .ios-spacer{height:40px;min-height:40px}
 @media(max-width:768px){.ios-spacer{height:10px;min-height:10px}}
 .n-icon{background:#e74c3c;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
@@ -270,10 +282,62 @@ const MISSING=[
 {t:'<a href="https://duckduckgo.com/?q=Tosokchon+samgyetang+Seoul">Samgyetang at Tosokchon</a>',d:'Ginseng chicken soup near Gyeongbokgung. Seafood-free. Perfect palace-day lunch.'}]}
 ];
 
+const TODOS=[
+{cat:"✈ Flights",items:[
+{id:"f1",text:"Seoul Gimpo → Jeju (Day 4, Apr 26 morning)",when:"Book 2–4 weeks ahead"},
+{id:"f2",text:"Jeju → Busan Gimhae (Day 7, Apr 29 morning)",when:"Book 2–4 weeks ahead"},
+{id:"f3",text:"International flights to/from Incheon",when:"Already booked?"}
+]},
+{cat:"🏨 Hotels",items:[
+{id:"h1",text:"Seoul hotel — Days 1–3 (Apr 23–25), Jongno/Bukchon area",when:"Book now — Four Seasons or Rakkojae"},
+{id:"h2",text:"Jeju hotel — Days 4–6 (Apr 26–28), Seogwipo/Jungmun",when:"Book now — Shilla Jeju or JW Marriott"},
+{id:"h3",text:"Busan hotel — Days 7–8 (Apr 29–30), Haeundae",when:"Book now — Park Hyatt or Signiel"},
+{id:"h4",text:"Seoul hotel — Days 9–11 (May 1–3), Jongno or Hongdae",when:"Book now — same as Days 1–3 or different area"}
+]},
+{cat:"🚗 Car Rental",items:[
+{id:"c1",text:"Jeju rental car — pickup Apr 26, return Apr 28",when:"Book 1–2 weeks ahead. Jeju Airport pickup."}
+]},
+{cat:"🚄 Train",items:[
+{id:"t1",text:"KTX Busan → Seoul (Day 9, May 1 afternoon)",when:"Book via Korail app 1–2 weeks ahead. Window seat!"}
+]},
+{cat:"🎫 Must-Book Activities",items:[
+{id:"a1",text:"DMZ Tour — Day 11 morning",when:"Book 3–5 days ahead via Klook/Viator. Bring passport copy."},
+{id:"a2",text:"Jungsik restaurant — Day 3 dinner",when:"Book via Catch Table app. Slots open 1st of even months at 11 AM KST — sell out in minutes."},
+{id:"a3",text:"Blueline Park Sky Capsule — Day 9 morning",when:"Book at bluelinepark.com 2–4 weeks ahead. Sunset slots sell out."},
+{id:"a4",text:"Abijou Clinic facial — Day 2 evening",when:"Book via abijouclinic.com or call 1544-0377 a few days ahead."}
+]},
+{cat:"📞 Recommended Reservations",items:[
+{id:"r1",text:"Maple Tree House BBQ — Day 2 dinner",when:"Call +82 2-790-7977 or AutoReserve app"},
+{id:"r2",text:"Yukjeon Hoekwan — Day 1 dinner",when:"Call +82 2-703-0019 for peak hours"},
+{id:"r3",text:"Dombedon black pork — Day 4 dinner",when:"Call +82 64-753-0008 for dinner"},
+{id:"r4",text:"Amsogalbi-jip galbi — Day 7 dinner",when:"Call +82 51-746-0033 or arrive before 4:30 PM"}
+]},
+{cat:"📱 Before Departure",items:[
+{id:"b1",text:"Buy eSIMs (KT or SK Telecom) or plan to get at Incheon",when:"Before trip or on arrival"},
+{id:"b2",text:"Download Korail app (KTX booking)",when:"Before trip"},
+{id:"b3",text:"Download Kakao Map app (better than Google Maps in Korea)",when:"Before trip"},
+{id:"b4",text:"Download Papago app (Korean translator by Naver)",when:"Before trip"},
+{id:"b5",text:"Get T-money cards at Incheon Airport convenience store",when:"On arrival"},
+{id:"b6",text:"Confirm Saryeoni Forest Trail is open (typically closed until May 15)",when:"1 week before, check visitjeju.net"}
+]}
+];
+
 let currentPage=0;
-const totalPages=DAYS.length+2; // cover + 12 days + missing
+const totalPages=DAYS.length+3; // cover + 12 days + todo + missing
 const mapInstances={};
 const mapBounds={};
+
+function toggleTodo(id){
+  const cb=document.getElementById('cb-'+id);
+  const row=document.getElementById('todo-row-'+id);
+  if(cb.checked){
+    localStorage.setItem('todo_'+id,'1');
+    row.classList.add('done');
+  }else{
+    localStorage.removeItem('todo_'+id);
+    row.classList.remove('done');
+  }
+}
 
 function gmapsUrl(q){return `https://www.google.com/maps/search/${q.replace(/\+/g,'+')}+South+Korea`}
 function showInfo(key,name){
@@ -423,10 +487,37 @@ function build(){
     app.appendChild(page);
   });
 
+  // === TODO PAGE ===
+  const todoBtn=document.createElement('button');
+  todoBtn.className='nav-btn';todoBtn.textContent='To-Do';todoBtn.style.borderBottom='2px solid #2ecc71';
+  todoBtn.onclick=()=>goPage(DAYS.length+1);
+  nav.appendChild(todoBtn);
+
+  const todoPage=document.createElement('div');
+  todoPage.className='page';
+  let th=`<div class="todo-page"><h2>✅ Reservations & To-Do</h2>`;
+  TODOS.forEach(cat=>{
+    th+=`<div class="todo-cat">${cat.cat}</div>`;
+    cat.items.forEach(item=>{
+      const checked=localStorage.getItem('todo_'+item.id)==='1';
+      th+=`<div class="todo-item ${checked?'done':''}" id="todo-row-${item.id}">
+        <input type="checkbox" class="todo-cb" id="cb-${item.id}" ${checked?'checked':''} onchange="toggleTodo('${item.id}')">
+        <div class="todo-body">
+          <div class="todo-text">${item.text}</div>
+          <div class="todo-when">⏰ ${item.when}</div>
+        </div>
+      </div>`;
+    });
+  });
+  th+=`</div>`;
+  th+=`<div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
+  todoPage.innerHTML=th;
+  app.appendChild(todoPage);
+
   // === MISSING PAGE ===
   const misBtn=document.createElement('button');
   misBtn.className='nav-btn';misBtn.textContent='Missing?';misBtn.style.borderBottom='2px solid #f39c12';
-  misBtn.onclick=()=>goPage(DAYS.length+1);
+  misBtn.onclick=()=>goPage(DAYS.length+2);
   nav.appendChild(misBtn);
 
   const misPage=document.createElement('div');
