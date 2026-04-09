@@ -10,7 +10,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0}
-body{padding-bottom:120px;overflow-x:hidden}
+body{padding-bottom:80px;overflow-x:hidden}
 
 /* Bottom nav */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#12122aee;backdrop-filter:blur(10px);border-top:1px solid #2a2a4a;display:flex;align-items:center;height:68px;padding:0 4px}
@@ -392,7 +392,7 @@ function build(){
     if(day.rain){
       h+=`<div style="margin:10px 12px;padding:12px 14px;background:#2d1a00;border-left:3px solid #e67e22;border-radius:8px;font-size:13px;color:#f0c040">🌧️ <strong>Rainy day?</strong> ${day.rain}</div>`;
     }
-    h+=`<div style="height:80px"></div></div></div>`;
+    h+=`<div style="height:20px"></div></div></div>`;
 
     // Tab: Hotel
     h+=`<div class="tab-content" data-tab="hotel"><div class="tab-inner">`;
@@ -415,7 +415,7 @@ function build(){
     h+=`</div></div>`;
 
     // iOS Safari spacer - must be a direct child of page, outside tab-content
-    h+=`<div class="ios-spacer" style="height:100px;min-height:100px;width:100%;display:block;clear:both" aria-hidden="true">&nbsp;</div>`;
+    h+=`<div class="ios-spacer" style="height:40px;min-height:40px;width:100%;display:block;clear:both" aria-hidden="true">&nbsp;</div>`;
     page.innerHTML=h;
     app.appendChild(page);
   });
@@ -434,7 +434,7 @@ function build(){
     t.items.forEach(i=>mh+=`<div class="m-item"><div class="m-title">${i.t}</div><div class="m-desc">${i.d}</div></div>`);
   });
   mh+=`</div>`;
-  mh+=`<div style="height:100px;min-height:100px;width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
+  mh+=`<div style="height:40px;min-height:40px;width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
   misPage.innerHTML=mh;
   app.appendChild(misPage);
 
