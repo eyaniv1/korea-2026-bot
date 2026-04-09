@@ -10,19 +10,19 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0}
-body{padding-bottom:58px;overflow-x:hidden}
+body{padding-bottom:72px;overflow-x:hidden}
 
 /* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#12122aee;backdrop-filter:blur(10px);border-top:1px solid #2a2a4a;display:flex;align-items:center;height:56px;padding:0 4px}
-.nav-scroll{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1;padding:8px 2px;scrollbar-width:none}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#12122aee;backdrop-filter:blur(10px);border-top:1px solid #2a2a4a;display:flex;align-items:center;height:68px;padding:0 4px}
+.nav-scroll{display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:1;padding:10px 2px;scrollbar-width:none}
 .nav-scroll::-webkit-scrollbar{display:none}
-.nav-btn{padding:6px 11px;border-radius:8px;font-size:12px;color:#aaa;background:#1a1a3a;white-space:nowrap;border:none;cursor:pointer;transition:all .2s;flex-shrink:0}
+.nav-btn{padding:10px 16px;border-radius:8px;font-size:14px;color:#aaa;background:#1a1a3a;white-space:nowrap;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;min-height:42px}
 .nav-btn.active{background:#e74c3c;color:#fff}
 .nav-btn.seoul{border-bottom:2px solid #3498db}
 .nav-btn.jeju{border-bottom:2px solid #2ecc71}
 .nav-btn.busan{border-bottom:2px solid #e67e22}
 .nav-btn.travel{border-bottom:2px solid #9b59b6}
-.nav-arrow{background:none;border:none;color:#888;font-size:22px;cursor:pointer;padding:4px 6px;flex-shrink:0}
+.nav-arrow{background:none;border:none;color:#888;font-size:28px;cursor:pointer;padding:6px 10px;flex-shrink:0;min-height:42px}
 
 /* Pages - show/hide */
 .page{display:none}
@@ -49,7 +49,7 @@ body{padding-bottom:58px;overflow-x:hidden}
 
 /* Tabs */
 .tabs{display:flex;background:#12122a;border-bottom:1px solid #2a2a4a}
-.tab-btn{flex:1;padding:10px 0;text-align:center;font-size:13px;color:#888;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn{flex:1;padding:12px 0;text-align:center;font-size:14px;color:#888;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
 .tab-btn.active{color:#fff;border-bottom-color:#e74c3c}
 .tab-content{display:none}
 .tab-content.active{display:block}
@@ -64,14 +64,14 @@ body{padding-bottom:58px;overflow-x:hidden}
 .poi-item{display:flex;gap:10px;padding:11px;background:#16163a;border-radius:10px;margin-bottom:7px;align-items:flex-start}
 .poi-num{background:#e74c3c;color:#fff;width:28px;height:28px;min-width:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;margin-top:2px}
 .poi-body{flex:1;min-width:0}
-.poi-time{font-size:11px;color:#888;background:#1e1e4a;display:inline-block;padding:1px 7px;border-radius:3px;margin-bottom:3px}
-.poi-name{font-size:14px;color:#fff;line-height:1.4}
+.poi-time{font-size:13px;color:#888;background:#1e1e4a;display:inline-block;padding:2px 8px;border-radius:3px;margin-bottom:4px}
+.poi-name{font-size:15px;color:#fff;line-height:1.5}
 .poi-name a{color:#5dade2;text-decoration:none}
 .poi-badges{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;color:#fff}
+.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:12px;color:#fff}
 .badge-hike{background:#27ae60}.badge-bike{background:#2980b9}.badge-food{background:#c0392b}
 .poi-actions{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
-.poi-action-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;color:#5dade2;background:#1e1e4a;border:none;cursor:pointer;text-decoration:none}
+.poi-action-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:6px;font-size:13px;color:#5dade2;background:#1e1e4a;border:none;cursor:pointer;text-decoration:none}
 .poi-action-btn.gmaps{color:#4ade80}
 
 /* Tab content sections */
@@ -80,7 +80,7 @@ body{padding-bottom:58px;overflow-x:hidden}
 .info-card.hotel-card{border-left:3px solid #f39c12}
 .info-card.transport-card{border-left:3px solid #3498db}
 .info-card h4{font-size:13px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.info-card .detail{font-size:14px;color:#ddd;line-height:1.7}
+.info-card .detail{font-size:15px;color:#ddd;line-height:1.7}
 .info-card a{color:#f5b041;text-decoration:none}
 .info-card.transport-card a{color:#5dade2}
 .voucher-area{margin-top:12px;padding:12px;background:#1e1e4a;border-radius:8px}
@@ -450,7 +450,7 @@ function build(){
         pts.push([p.lat,p.lng]);
       });
       if(pts.length>1){
-        L.polyline(pts,{color:'#e74c3c',weight:3,opacity:.6,dashArray:'8,8'}).addTo(m);
+        // route line removed by request
         const b=L.latLngBounds(pts).pad(.2);
         mapBounds[day.num]=b;
         m.fitBounds(b);
@@ -463,9 +463,18 @@ function build(){
 }
 
 // Swipe
-let tx=0;
-document.addEventListener('touchstart',e=>{tx=e.changedTouches[0].screenX},{passive:true});
-document.addEventListener('touchend',e=>{const d=tx-e.changedTouches[0].screenX;if(Math.abs(d)>60){d>0?goPage(currentPage+1):goPage(currentPage-1)}},{passive:true});
+let tx=0,swipeOk=true;
+document.addEventListener('touchstart',e=>{
+  // Don't swipe if touching the map or nav
+  const t=e.target;
+  swipeOk=!t.closest('.map-wrap')&&!t.closest('.bottom-nav')&&!t.closest('.leaflet-container');
+  tx=e.changedTouches[0].screenX;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!swipeOk)return;
+  const d=tx-e.changedTouches[0].screenX;
+  if(Math.abs(d)>80){d>0?goPage(currentPage+1):goPage(currentPage-1)}
+},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')goPage(currentPage+1);if(e.key==='ArrowLeft')goPage(currentPage-1);if(e.key==='Escape')closeModal()});
 
 document.addEventListener('DOMContentLoaded',build);
