@@ -49,7 +49,7 @@
     .day-number { width: 40px; height: 40px; font-size: 18px; }
     .itinerary { padding: 14px; }
     .itinerary li { font-size: 13px; gap: 6px; }
-    .map { height: 220px; }
+    .map { height: 300px; }
     .summary-section, .missing-section { padding: 20px 12px; }
     table { font-size: 12px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     th, td { padding: 8px 6px; white-space: nowrap; }
@@ -80,7 +80,7 @@
   .maps-column { display: flex; flex-direction: column; gap: 10px; }
   .map-box { background: #16163a; border-radius: 12px; overflow: hidden; }
   .map-label { padding: 8px 14px; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; background: #12122a; }
-  .map { height: 250px; width: 100%; }
+  .map { height: 400px; width: 100%; }
 
   /* Numbered markers */
   .numbered-icon { background: #e74c3c; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
@@ -523,11 +523,7 @@ function buildPage() {
         </div>
         <div class="maps-column">
           <div class="map-box">
-            <div class="map-label">📍 South Korea overview</div>
-            <div id="overview-${day.num}" class="map"></div>
-          </div>
-          <div class="map-box">
-            <div class="map-label">🔍 ${day.region} — detail</div>
+            <div class="map-label">📍 ${day.region}</div>
             <div id="detail-${day.num}" class="map"></div>
           </div>
         </div>
@@ -542,16 +538,6 @@ function buildPage() {
 
 function initAllMaps() {
   DAYS.forEach(day => {
-    // Overview map
-    const ov = L.map(`overview-${day.num}`, { zoomControl: true, scrollWheelZoom: false }).setView([36.0, 127.8], 7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OSM © CARTO', maxZoom: 19 }).addTo(ov);
-
-    day.pois.forEach(p => L.marker([p.lat, p.lng], { icon: createOverviewDot() }).addTo(ov));
-    if (day.pois.length > 1) {
-      const bounds = L.latLngBounds(day.pois.map(p => [p.lat, p.lng])).pad(0.3);
-      L.rectangle(bounds, { color: '#e74c3c', weight: 2, fillOpacity: 0.08, dashArray: '6,6' }).addTo(ov);
-    }
-
     // Detail map
     const dt = L.map(`detail-${day.num}`, { zoomControl: true, scrollWheelZoom: false }).setView([36.0, 127.8], 7);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OSM © CARTO', maxZoom: 19 }).addTo(dt);
