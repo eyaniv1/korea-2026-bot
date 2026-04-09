@@ -25,7 +25,7 @@ body{padding-bottom:120px;overflow-x:hidden}
 .nav-arrow{background:none;border:none;color:#888;font-size:28px;cursor:pointer;padding:6px 10px;flex-shrink:0;min-height:42px}
 
 /* Pages - show/hide */
-.page{display:none;padding-bottom:100px}
+.page{display:none}
 .page.active{display:block}
 
 /* Cover page */
@@ -414,6 +414,8 @@ function build(){
     }
     h+=`</div></div>`;
 
+    // iOS Safari spacer - must be a direct child of page, outside tab-content
+    h+=`<div class="ios-spacer" style="height:100px;min-height:100px;width:100%;display:block;clear:both" aria-hidden="true">&nbsp;</div>`;
     page.innerHTML=h;
     app.appendChild(page);
   });
@@ -432,6 +434,7 @@ function build(){
     t.items.forEach(i=>mh+=`<div class="m-item"><div class="m-title">${i.t}</div><div class="m-desc">${i.d}</div></div>`);
   });
   mh+=`</div>`;
+  mh+=`<div style="height:100px;min-height:100px;width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
   misPage.innerHTML=mh;
   app.appendChild(misPage);
 
