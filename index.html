@@ -278,7 +278,8 @@ const mapBounds={};
 function gmapsUrl(q){return `https://www.google.com/maps/search/${q.replace(/\+/g,'+')}+South+Korea`}
 function showInfo(key,name){
   document.getElementById('modal-title').textContent=name.replace(/🥾|🚴/g,'').trim();
-  document.getElementById('modal-body').innerHTML=(DESC[key]||'No description available.').replace(/\n\n/g,'<br><br>');
+  const txt=DESC[key]||'No description available.';
+  document.getElementById('modal-body').innerHTML=txt.replace(/\\n\\n/g,'<br><br>').replace(/\n\n/g,'<br><br>');
   document.getElementById('modal-overlay').classList.add('show');
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
