@@ -284,8 +284,8 @@ const MISSING=[
 
 const TODOS=[
 {cat:"✈ Flights",items:[
-{id:"f1",text:"Seoul Gimpo → Jeju (Day 4, Apr 26 morning)",when:"Book 2–4 weeks ahead"},
-{id:"f2",text:"Jeju → Busan Gimhae (Day 7, Apr 29 morning)",when:"Book 2–4 weeks ahead"},
+{id:"f1",text:"Seoul Gimpo → Jeju (Day 4, Apr 26 morning)",when:'Book 2–4 weeks ahead',link:"https://www.koreanair.com",linkText:"Korean Air"},
+{id:"f2",text:"Jeju → Busan Gimhae (Day 7, Apr 29 morning)",when:'Book 2–4 weeks ahead',link:"https://www.koreanair.com",linkText:"Korean Air"},
 {id:"f3",text:"International flights to/from Incheon",when:"Already booked?"}
 ]},
 {cat:"🏨 Hotels",items:[
@@ -298,27 +298,27 @@ const TODOS=[
 {id:"c1",text:"Jeju rental car — pickup Apr 26, return Apr 28",when:"Book 1–2 weeks ahead. Jeju Airport pickup."}
 ]},
 {cat:"🚄 Train",items:[
-{id:"t1",text:"KTX Busan → Seoul (Day 9, May 1 afternoon)",when:"Book via Korail app 1–2 weeks ahead. Window seat!"}
+{id:"t1",text:"KTX Busan → Seoul (Day 9, May 1 afternoon)",when:'Book via Korail app 1–2 weeks ahead. Window seat!',link:"https://www.letskorail.com/ebizbf/EbizBfTicketSearch.do",linkText:"Korail (KTX)"}
 ]},
 {cat:"🎫 Must-Book Activities",items:[
-{id:"a1",text:"DMZ Tour — Day 11 morning",when:"Book 3–5 days ahead via Klook/Viator. Bring passport copy."},
-{id:"a2",text:"Jungsik restaurant — Day 3 dinner",when:"Book via Catch Table app. Slots open 1st of even months at 11 AM KST — sell out in minutes."},
-{id:"a3",text:"Blueline Park Sky Capsule — Day 9 morning",when:"Book at bluelinepark.com 2–4 weeks ahead. Sunset slots sell out."},
-{id:"a4",text:"Abijou Clinic facial — Day 2 evening",when:"Book via abijouclinic.com or call 1544-0377 a few days ahead."}
+{id:"a1",text:"DMZ Tour — Day 11 morning",when:'Book 3–5 days ahead. Bring passport copy.',link:"https://www.klook.com/en-US/activity/216-dmz-tour-gyeonggi-do/",linkText:"Klook DMZ Tour"},
+{id:"a2",text:"Jungsik restaurant — Day 3 dinner",when:'Slots open 1st of even months at 11 AM KST — sell out in minutes.',link:"https://app.catchtable.co.kr/ct/shop/jungsik",linkText:"Catch Table"},
+{id:"a3",text:"Blueline Park Sky Capsule — Day 9 morning (~9:00 AM, one way Mipo → Cheongsapo)",when:'Book 2–4 weeks ahead.',link:"https://www.bluelinepark.com/eng/booking.do",linkText:"Blueline Park"},
+{id:"a4",text:"Abijou Clinic facial — Day 2 evening",when:'Book a few days ahead.',link:"https://abijouclinic.com/eng/",linkText:"Abijou Clinic"}
 ]},
 {cat:"📞 Recommended Reservations",items:[
-{id:"r1",text:"Maple Tree House BBQ — Day 2 dinner",when:"Call +82 2-790-7977 or AutoReserve app"},
+{id:"r1",text:"Maple Tree House BBQ — Day 2 dinner",when:'Call +82 2-790-7977',link:"https://app.autoreserve.com/restaurants/maple-tree-house",linkText:"AutoReserve"},
 {id:"r2",text:"Yukjeon Hoekwan — Day 1 dinner",when:"Call +82 2-703-0019 for peak hours"},
 {id:"r3",text:"Dombedon black pork — Day 4 dinner",when:"Call +82 64-753-0008 for dinner"},
 {id:"r4",text:"Amsogalbi-jip galbi — Day 7 dinner",when:"Call +82 51-746-0033 or arrive before 4:30 PM"}
 ]},
 {cat:"📱 Before Departure",items:[
-{id:"b1",text:"Buy eSIMs (KT or SK Telecom) or plan to get at Incheon",when:"Before trip or on arrival"},
-{id:"b2",text:"Download Korail app (KTX booking)",when:"Before trip"},
-{id:"b3",text:"Download Kakao Map app (better than Google Maps in Korea)",when:"Before trip"},
-{id:"b4",text:"Download Papago app (Korean translator by Naver)",when:"Before trip"},
+{id:"b1",text:"Buy eSIMs (KT or SK Telecom)",when:'Before trip or at Incheon',link:"https://www.klook.com/en-US/activity/41872-kt-4g-lte-unlimited-data-esim-south-korea/",linkText:"Klook eSIM"},
+{id:"b2",text:"Download Korail app (KTX booking)",when:'Before trip',link:"https://apps.apple.com/app/korail-talk/id1011625637",linkText:"App Store"},
+{id:"b3",text:"Download Kakao Map app",when:'Before trip',link:"https://apps.apple.com/app/kakao-map/id304608425",linkText:"App Store"},
+{id:"b4",text:"Download Papago translator app",when:'Before trip',link:"https://apps.apple.com/app/naver-papago-ai-translator/id1147874819",linkText:"App Store"},
 {id:"b5",text:"Get T-money cards at Incheon Airport convenience store",when:"On arrival"},
-{id:"b6",text:"Confirm Saryeoni Forest Trail is open (typically closed until May 15)",when:"1 week before, check visitjeju.net"}
+{id:"b6",text:"Confirm Saryeoni Forest Trail is open (closed until May 15?)",when:'1 week before',link:"https://www.visitjeju.net/en/",linkText:"Visit Jeju"}
 ]}
 ];
 
@@ -504,7 +504,7 @@ function build(){
         <input type="checkbox" class="todo-cb" id="cb-${item.id}" ${checked?'checked':''} onchange="toggleTodo('${item.id}')">
         <div class="todo-body">
           <div class="todo-text">${item.text}</div>
-          <div class="todo-when">⏰ ${item.when}</div>
+          <div class="todo-when">⏰ ${item.when}${item.link?` · <a href="${item.link}" target="_blank" rel="noopener" style="color:#5dade2">🔗 ${item.linkText||'Book'}</a>`:''}</div>
         </div>
       </div>`;
     });
