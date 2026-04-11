@@ -667,19 +667,20 @@ document.addEventListener('touchend',e=>{
 },{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')goPage(currentPage+1);if(e.key==='ArrowLeft')goPage(currentPage-1);if(e.key==='Escape')closeModal()});
 
-// Force all external links to open in new tab (iOS Safari fix)
-document.addEventListener('click',function(e){
-  const a=e.target.closest('a');
-  if(!a)return;
-  const href=a.getAttribute('href');
-  if(!href)return;
-  // Skip internal navigation
-  if(href.startsWith('#'))return;
-  // Force new tab for all external links and PDFs
-  if(href.startsWith('http')||href.endsWith('.pdf')){
-    e.preventDefault();
-    window.open(href,'_blank');
-  }
+// Ensure all external links and PDFs open in new tab
+document.addEventListener('DOMContentLoaded',function(){
+  // Set target=_blank on ALL links that go external or to PDFs
+  const observer=new MutationObserver(function(){
+    document.querySelectorAll('a').forEach(function(a){
+      const href=a.getAttribute('href');
+      if(!href||href.startsWith('#'))return;
+      if(href.startsWith('http')||href.endsWith('.pdf')){
+        a.setAttribute('target','_blank');
+        a.setAttribute('rel','noopener noreferrer');
+      }
+    });
+  });
+  observer.observe(document.body,{childList:true,subtree:true});
 });
 
 document.addEventListener('DOMContentLoaded',build);
