@@ -320,6 +320,9 @@ const TODOS=[
 ]},
 {cat:"📱 Before Departure",items:[
 {id:"b1",text:"Buy eSIMs (KT or SK Telecom)",when:'Before trip or at Incheon',link:"https://www.klook.com/en-US/activity/41872-kt-4g-lte-unlimited-data-esim-south-korea/",linkText:"Klook eSIM"},
+{id:"b7",text:"Ensure credit cards have 4-digit PIN (for Korean ATMs)",when:"Before trip — call your bank if unsure"},
+{id:"b8",text:"Notify bank of travel to South Korea",when:"Before trip"},
+{id:"b9",text:"Buy 4 physical T-money cards at Incheon Airport convenience store",when:"On arrival — load 50,000 won each"},
 {id:"b2",text:"Download Korail app (KTX booking)",when:'Before trip',link:"https://apps.apple.com/app/korail-talk/id1011625637",linkText:"App Store"},
 {id:"b3",text:"Download Kakao Map app",when:'Before trip',link:"https://apps.apple.com/app/kakao-map/id304608425",linkText:"App Store"},
 {id:"b4",text:"Download Papago translator app",when:'Before trip',link:"https://apps.apple.com/app/naver-papago-ai-translator/id1147874819",linkText:"App Store"},
@@ -329,7 +332,7 @@ const TODOS=[
 ];
 
 let currentPage=0;
-const totalPages=DAYS.length+3; // cover + 12 days + todo + missing
+const totalPages=DAYS.length+4; // cover + 12 days + todo + info + missing
 const mapInstances={};
 const mapBounds={};
 
@@ -520,10 +523,94 @@ function build(){
   todoPage.innerHTML=th;
   app.appendChild(todoPage);
 
+  // === INFO PAGE ===
+  const infoBtn=document.createElement('button');
+  infoBtn.className='nav-btn';infoBtn.textContent='Info';infoBtn.style.borderBottom='2px solid #5dade2';
+  infoBtn.onclick=()=>goPage(DAYS.length+2);
+  nav.appendChild(infoBtn);
+
+  const infoPage=document.createElement('div');
+  infoPage.className='page';
+  infoPage.innerHTML=`<div class="missing-page">
+    <h2>💰 Payments in Korea</h2>
+
+    <div class="m-item">
+      <div class="m-title">🚇 T-Money Card — For Transit</div>
+      <div class="m-desc">
+        <b>What it is:</b> A rechargeable transit card for subway, bus, and some taxis across all of South Korea.<br><br>
+        <b>Where to buy:</b> Any convenience store (GS25, CU, 7-Eleven) at Incheon Airport arrivals hall. Ask for "T-money card." Costs ~2,500 won (~$2) per card. Buy 4 — one per person.<br><br>
+        <b>How to load:</b> At the convenience store counter — hand them cash and say "charge please" (충전 / chung-jeon). Or use subway station charging machines (cash only). <b>Credit cards cannot be used to top up.</b><br><br>
+        <b>How much to load:</b> Start with 50,000 won (~$37) per person. Subway rides cost ~1,350 won each. Bus ~1,200 won. You'll use roughly 10,000–15,000 won/day in Seoul. Top up as needed.<br><br>
+        <b>How to use:</b> Tap the card on the reader when entering AND exiting subway gates. On buses, tap when boarding.<br><br>
+        <b>Refund:</b> At the end of the trip, return the card at any convenience store for a refund of remaining balance (minus 500 won fee).
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">💳 Credit Cards — For Shopping & Dining</div>
+      <div class="m-desc">
+        <b>Visa and Mastercard</b> are widely accepted at most restaurants, cafes, shops, and department stores. <b>Bring your physical cards</b> — don't rely on Apple Pay alone.<br><br>
+        <b>Apple Pay:</b> Works at convenience stores, chain restaurants, and some shops — but NOT at many traditional restaurants, markets, street food vendors, or some department stores. Korea's payment terminals were built for Samsung Pay (MST), not Apple Pay (NFC). Expect Apple Pay to fail about 30–40% of the time.<br><br>
+        <b>PIN code:</b> Most Korean card terminals use signature or no verification for purchases. However, <b>ATMs require a 4-digit PIN only</b>. If your bank uses a 5 or 6-digit PIN, it will NOT work. Contact your bank before the trip to ensure you have a 4-digit PIN set up.<br><br>
+        <b>Tip:</b> Notify your bank/credit card company before the trip that you're traveling to South Korea to avoid fraud blocks.
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">💵 Cash — You'll Need Some</div>
+      <div class="m-desc">
+        <b>Korea is not fully cashless.</b> You'll need cash for:<br>
+        • T-money card top-ups<br>
+        • Street food and market stalls (Gwangjang, Jagalchi, etc.)<br>
+        • Small traditional restaurants<br>
+        • Some taxis<br>
+        • Temple entrance fees<br><br>
+        <b>How much to carry:</b> ~100,000–150,000 won per person (~$75–110) at a time. Withdraw more as needed.<br><br>
+        <b>Where to get cash:</b><br>
+        • <b>ATM at Incheon Airport</b> on arrival — look for "Global ATM" machines (KB Bank, Woori Bank, Citibank). Not all ATMs accept foreign cards.<br>
+        • Convenience store ATMs (GS25, CU) accept foreign cards 24/7<br>
+        • Subway station ATMs marked "Global ATM"<br><br>
+        <b>ATM tips:</b><br>
+        • <b>Always choose KRW</b> when the screen asks. Never choose your home currency — that triggers Dynamic Currency Conversion with terrible rates.<br>
+        • Expect ~3,000–6,000 won fee per withdrawal (Korean side) + your bank's foreign transaction fee<br>
+        • Withdraw 300,000–500,000 won at a time to minimize fees<br>
+        • Max withdrawal per transaction is typically 400,000–1,000,000 won
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">🏧 Quick Reference</div>
+      <div class="m-desc">
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Subway/Bus</td><td style="padding:6px">T-money card (tap)</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Restaurants</td><td style="padding:6px">Credit card (physical)</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Cafes & chains</td><td style="padding:6px">Credit card or Apple Pay</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Street food & markets</td><td style="padding:6px">Cash only</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Convenience stores</td><td style="padding:6px">Credit card, Apple Pay, or cash</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Taxis</td><td style="padding:6px">Credit card (most) or cash</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Temple entry fees</td><td style="padding:6px">Cash</td></tr>
+          <tr><td style="padding:6px;color:#888">T-money top-up</td><td style="padding:6px">Cash only</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">📋 Before You Go Checklist</div>
+      <div class="m-desc">
+        ☐ Ensure all credit cards have a <b>4-digit PIN</b> (for ATMs)<br>
+        ☐ Notify your bank you're traveling to South Korea<br>
+        ☐ Bring at least 2 physical credit/debit cards (Visa or Mastercard)<br>
+        ☐ No need to exchange currency at home — ATMs in Korea give better rates
+      </div>
+    </div>
+  </div>
+  <div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
+  app.appendChild(infoPage);
+
   // === MISSING PAGE ===
   const misBtn=document.createElement('button');
   misBtn.className='nav-btn';misBtn.textContent='Missing?';misBtn.style.borderBottom='2px solid #f39c12';
-  misBtn.onclick=()=>goPage(DAYS.length+2);
+  misBtn.onclick=()=>goPage(DAYS.length+3);
   nav.appendChild(misBtn);
 
   const misPage=document.createElement('div');
