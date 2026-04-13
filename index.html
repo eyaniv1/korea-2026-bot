@@ -170,7 +170,7 @@ pois:[
 {num:3,sd:"25/4",title:"E-Bike + Hike",date:"Apr 25 (Sat)",region:"Seoul",nc:"seoul",transport:null,hotel:{text:"Amid Hotel Seoul · Jongno/Insadong"},
 rain:"Skip the bike and hike. Instead: War Memorial of Korea (free, indoor, excellent), then Itaewon for shopping, N Seoul Tower by cable car (covered), Jungsik dinner as planned.",
 pois:[
-{n:1,key:"yeouido_bike",time:"Morning",name:'🚴 E-bike Han River start · <a href="vouchers/Attractions/ebikes%20along%20river%20in%20Seoul%2025%20Apr%20Millim.pdf" target="_blank" rel="noopener" style="color:#2ecc71">📎 voucher</a>',lat:37.5254,lng:126.9223,q:"Han+River+bike+path+Yeouido",badge:"bike",bt:"20 km · ~1.5 hrs · flat"},
+{n:1,key:"yeouido_bike",time:"Morning",name:"🚴 E-bike Han River start",lat:37.5254,lng:126.9223,q:"Han+River+bike+path+Yeouido",badge:"bike",bt:"20 km · ~1.5 hrs · flat",voucher:"vouchers/Attractions/ebikes%20along%20river%20in%20Seoul%2025%20Apr%20Millim.pdf"},
 {n:2,key:"banpo_bike",time:"AM",name:"Banpo Bridge turnaround",lat:37.5080,lng:126.9950,q:"Banpo+Bridge+Seoul+Han+River",badge:"bike"},
 {n:3,key:"inwangsan",time:"PM",name:"🥾 Inwangsan Fortress Wall",lat:37.5840,lng:126.9590,q:"Inwangsan+hike+Seoul",badge:"hike",bt:"3.5 km · 1.5–2 hrs · +236m"},
 {n:4,key:"n_seoul_tower",time:"Sunset",name:"N Seoul Tower",lat:37.5512,lng:126.9882,q:"N+Seoul+Tower"},
@@ -247,7 +247,7 @@ pois:[
 {num:11,sd:"3/5",title:"DMZ + Palace + Farewell",date:"May 3 (Sun)",region:"Seoul",nc:"seoul",transport:null,hotel:{text:"Shilla Stay Mapo Hongdae"},
 rain:"DMZ tour runs rain or shine. Afternoon: National Museum of Korea (free), Dongdaemun shopping malls, or jjimjilbang (Dragon Hill Spa).",
 pois:[
-{n:1,key:"dmz",time:"Morning",name:'🪖 DMZ Tour — half day · <a href="vouchers/attractions/DMZ%20tour%203MAY%20morning%20Klook.pdf" target="_blank" rel="noopener" style="color:#2ecc71">📎 voucher</a>',lat:37.8953,lng:126.7769,q:"DMZ+tour+South+Korea"},
+{n:1,key:"dmz",time:"Morning",name:"🪖 DMZ Tour — half day",lat:37.8953,lng:126.7769,q:"DMZ+tour+South+Korea",voucher:"vouchers/Attractions/DMZ%20tour%203MAY%20morning%20Klook.pdf"},
 {n:2,key:"gyeongbokgung",time:"PM",name:"Gyeongbokgung Palace",lat:37.5796,lng:126.9770,q:"Gyeongbokgung+Palace+Seoul"},
 {n:3,key:"bukchon",time:"PM",name:"Bukchon Hanok Village",lat:37.5826,lng:126.9831,q:"Bukchon+Hanok+Village+Seoul"},
 {n:4,key:"gwangjang",time:"Late PM",name:"Gwangjang Market — street food",lat:37.5701,lng:126.9995,q:"Gwangjang+Market+Seoul",badge:"food"},
@@ -469,6 +469,7 @@ function build(){
         <div class="poi-actions">
           <button class="poi-action-btn" onclick="showInfo('${p.key}','${cleanName.replace(/'/g,"\\'")}')">ℹ️ Info</button>
           <a class="poi-action-btn gmaps" href="${gmapsUrl(p.q)}" target="_blank" rel="noopener">📍 Map</a>
+          ${p.voucher?`<a class="poi-action-btn" href="${p.voucher}" target="_blank" rel="noopener" style="color:#2ecc71">📎 Voucher</a>`:''}
         </div></div></div>`;
     });
     if(day.rain){
