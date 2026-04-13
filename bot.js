@@ -4,6 +4,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const Groq = require('groq-sdk');
 const cron = require('node-cron');
 const { TRIP_CONTEXT } = require('./trip-context');
+const { findNearbyPois, addCustomPoi, getDistance } = require('./poi-database');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
@@ -18,6 +19,62 @@ const activeGroups = new Set();
 
 // Store last known location per chat
 const lastLocations = new Map();
+
+// ===== PROXIMITY ALERT SYSTEM =====
+const ALERT_RADIUS = 300; // meters
+const ALERT_COOLDOWN = 20 * 60 * 1000; // 20 min between alerts
+const ALERT_REVIST_COOLDOWN = 4 * 60 * 60 * 1000; // 4 hrs before re-alerting same POI
+const alertedPois = new Map(); // key: `chatId:poiName` → timestamp
+const proximityEnabled = new Map(); // chatId → boolean
+
+function shouldAlertPoi(chatId, poiName) {
+  const key = `${chatId}:${poiName}`;
+  const lastAlerted = alertedPois.get(key);
+  if (lastAlerted && (Date.now() - lastAlerted) < ALERT_REVIST_COOLDOWN) return false;
+  return true;
+}
+
+function getLastAlertTime(chatId) {
+  let latest = 0;
+  for (const [key, time] of alertedPois) {
+    if (key.startsWith(`${chatId}:`) && time > latest) latest = time;
+  }
+  return latest;
+}
+
+async function checkProximityAlerts(chatId, lat, lng) {
+  if (!proximityEnabled.get(chatId)) return;
+
+  // Cooldown — don't spam
+  const timeSinceLastAlert = Date.now() - getLastAlertTime(chatId);
+  if (timeSinceLastAlert < ALERT_COOLDOWN) return;
+
+  const nearby = findNearbyPois(lat, lng, ALERT_RADIUS);
+  if (nearby.length === 0) return;
+
+  // Find the closest POI we haven't alerted about recently
+  for (const poi of nearby) {
+    if (!shouldAlertPoi(chatId, poi.name)) continue;
+
+    // Mark as alerted
+    alertedPois.set(`${chatId}:${poi.name}`, Date.now());
+
+    // Send friendly alert
+    const msg = `📍 *Hey! You're ${poi.distance}m from ${poi.name}!*\n\n${poi.desc}\n\n🗺️ [Open in Maps](https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng})`;
+
+    try {
+      await bot.telegram.sendMessage(chatId, msg, {
+        parse_mode: 'Markdown',
+        disable_notification: false
+      }).catch(() => bot.telegram.sendMessage(chatId, msg.replace(/[*_\[\]()]/g, '')));
+    } catch (err) {
+      console.error('Proximity alert error:', err.message);
+    }
+
+    // Only one alert at a time
+    break;
+  }
+}
 
 // Admin config — Eran's Telegram user ID (set on first /admin command)
 const ADMIN_NAME = 'Eran';
@@ -306,30 +363,50 @@ bot.on('voice', async (ctx) => {
   }
 });
 
-// Handle location shares
+// Handle location shares (one-time and live location updates)
 bot.on('location', async (ctx) => {
   trackGroup(ctx);
   const chatId = ctx.chat.id;
   const userName = ctx.from.first_name || 'Someone';
   const { latitude, longitude } = ctx.message.location;
+  const isLive = !!ctx.message.location.live_period;
 
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  addMessage(chatId, 'user',
-    `${userName} shared their location: latitude ${latitude}, longitude ${longitude}. ` +
-    `Acknowledge briefly that you know where they are. If there was a recent question about nearby places, answer it using this location.`
-  );
+  // Check proximity alerts
+  await checkProximityAlerts(chatId, latitude, longitude);
 
-  try {
-    await ctx.sendChatAction('typing');
-    const reply = await askClaude(chatId, getHistory(chatId));
-    addMessage(chatId, 'assistant', reply);
-    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
-      ctx.reply(reply)
+  // Only respond conversationally for one-time location shares, not live updates
+  if (!isLive) {
+    addMessage(chatId, 'user',
+      `${userName} shared their location: latitude ${latitude}, longitude ${longitude}. ` +
+      `Acknowledge briefly that you know where they are. If there was a recent question about nearby places, answer it using this location.`
     );
-  } catch (err) {
-    console.error('Location error:', err.message);
+
+    try {
+      await ctx.sendChatAction('typing');
+      const reply = await askClaude(chatId, getHistory(chatId));
+      addMessage(chatId, 'assistant', reply);
+      await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+        ctx.reply(reply)
+      );
+    } catch (err) {
+      console.error('Location error:', err.message);
+    }
   }
+});
+
+// Handle edited messages (live location updates come as edits)
+bot.on('edited_message', async (ctx) => {
+  if (!ctx.editedMessage?.location) return;
+  const chatId = ctx.editedMessage.chat.id;
+  const userName = ctx.editedMessage.from.first_name || 'Someone';
+  const { latitude, longitude } = ctx.editedMessage.location;
+
+  lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
+
+  // Check proximity alerts on every live location update
+  await checkProximityAlerts(chatId, latitude, longitude);
 });
 
 // ===== ADMIN COMMANDS =====
@@ -412,6 +489,56 @@ bot.command('deltip', (ctx) => {
   ctx.reply(`🗑️ Removed tip: "${removed[0]}"`);
 });
 
+// /alerts on|off — toggle proximity alerts
+bot.command('alerts', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  const chatId = ctx.chat.id;
+  const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
+  if (arg === 'off') {
+    proximityEnabled.set(chatId, false);
+    ctx.reply('📍 Proximity alerts disabled.');
+  } else if (arg === 'on') {
+    proximityEnabled.set(chatId, true);
+    ctx.reply('📍 Proximity alerts enabled! Share your live location to start receiving alerts when you\'re near interesting places.');
+  } else {
+    ctx.reply(`Proximity alerts: ${proximityEnabled.get(chatId) ? '📍 ON' : '⭕ OFF'}\nUsage: /alerts on or /alerts off\n\nWhen ON, share live location and I'll alert you when you're within ${ALERT_RADIUS}m of interesting places.`);
+  }
+});
+
+// /nearby — show nearby POIs based on last known location
+bot.command('nearby', async (ctx) => {
+  trackGroup(ctx);
+  const chatId = ctx.chat.id;
+  const loc = lastLocations.get(chatId);
+  if (!loc) return ctx.reply('📍 Share your location first (paperclip → Location), then try /nearby again.');
+
+  const nearby = findNearbyPois(loc.latitude, loc.longitude, 1000); // 1km radius for manual check
+  if (nearby.length === 0) return ctx.reply('No known POIs within 1km. Try sharing a new location or walking toward a neighborhood center.');
+
+  const list = nearby.slice(0, 8).map((p, i) =>
+    `${i + 1}. *${p.name}* (${p.distance}m)\n   ${p.desc.substring(0, 80)}...`
+  ).join('\n\n');
+
+  await ctx.reply(`📍 *Nearby places (within 1km):*\n\n${list}`, { parse_mode: 'Markdown' }).catch(() =>
+    ctx.reply(nearby.slice(0, 8).map((p, i) => `${i + 1}. ${p.name} (${p.distance}m)`).join('\n'))
+  );
+});
+
+// /addpoi lat lng description — add a custom POI
+bot.command('addpoi', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
+  const parts = ctx.message.text.replace('/addpoi', '').trim().split(/\s+/);
+  if (parts.length < 3) return ctx.reply('Usage: /addpoi 37.5745 126.9856 Amazing tea house on the corner');
+  const lat = parseFloat(parts[0]);
+  const lng = parseFloat(parts[1]);
+  if (isNaN(lat) || isNaN(lng)) return ctx.reply('Invalid coordinates. Usage: /addpoi 37.5745 126.9856 Description here');
+  const desc = parts.slice(2).join(' ');
+  addCustomPoi(desc.substring(0, 50), lat, lng, desc);
+  ctx.reply(`📍 Custom POI added at ${lat}, ${lng}: "${desc}"`);
+});
+
 // /status — show current bot config
 bot.command('status', (ctx) => {
   trackGroup(ctx);
@@ -420,7 +547,9 @@ bot.command('status', (ctx) => {
     `• Response mode: ${settings.responseMode}\n` +
     `• Scheduled messages: ${settings.scheduleEnabled ? 'ON' : 'OFF'}\n` +
     `• Curated tips: ${settings.tips.length}\n` +
-    `• Active groups: ${activeGroups.size}`,
+    `• Active groups: ${activeGroups.size}\n` +
+    `• Proximity alerts: ${proximityEnabled.get(ctx.chat.id) ? 'ON' : 'OFF'}\n` +
+    `• POIs in database: ${require('./poi-database').getAllPois().length}`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -432,6 +561,7 @@ bot.command('help', (ctx) => {
     `*Commands:*\n` +
     `🗺️ /plan — today's itinerary\n` +
     `🌐 /translate <text> — translate to Korean\n` +
+    `📍 /nearby — show POIs near your location\n` +
     `📝 /tips — show curated tips\n` +
     `⚙️ /status — bot settings\n\n` +
     `*Admin (Eran only):*\n` +
@@ -439,8 +569,10 @@ bot.command('help', (ctx) => {
     `/normal — respond when mentioned (default)\n` +
     `/chatty — respond to everything\n` +
     `/schedule on|off — toggle daily messages\n` +
+    `/alerts on|off — toggle proximity alerts\n` +
     `/addtip <text> — add a tip\n` +
-    `/deltip <num> — remove a tip`,
+    `/deltip <num> — remove a tip\n` +
+    `/addpoi <lat> <lng> <description> — add a custom POI`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -461,7 +593,8 @@ bot.start((ctx) => {
     `I'll also:\n` +
     `• Send a morning briefing at 8am 🌅\n` +
     `• Remind you about tomorrow's plans at 8pm 📋\n` +
-    `• Nudge you to share photos at 10pm 📸\n\n` +
+    `• Nudge you to share photos at 10pm 📸\n` +
+    `• 📍 Alert you when you're near interesting places (share live location + /alerts on)\n\n` +
     `Just chat naturally — I know the whole group!`,
     { parse_mode: 'Markdown' }
   );
