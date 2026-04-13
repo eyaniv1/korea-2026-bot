@@ -235,35 +235,6 @@ function shouldRespond(ctx) {
   return false;
 }
 
-// Handle text messages
-bot.on('text', async (ctx) => {
-  trackGroup(ctx);
-
-  if (!shouldRespond(ctx)) return;
-
-  const chatId = ctx.chat.id;
-  const userName = ctx.from.first_name || 'Someone';
-  const userMessage = `${userName}: ${ctx.message.text}`;
-
-  addMessage(chatId, 'user', userMessage);
-
-  try {
-    await ctx.sendChatAction('typing');
-    const reply = await askClaude(chatId, getHistory(chatId));
-    addMessage(chatId, 'assistant', reply);
-    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
-      ctx.reply(reply)
-    );
-  } catch (err) {
-    console.error('Error:', err.status, err.message, err.error);
-    const history = getHistory(chatId);
-    if (history.length > 0 && history[history.length - 1].role === 'user') {
-      history.pop();
-    }
-    await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
-  }
-});
-
 // Handle photos (signs, menus, etc.)
 bot.on('photo', async (ctx) => {
   trackGroup(ctx);
@@ -677,6 +648,35 @@ bot.command('translate', async (ctx) => {
     );
   } catch (err) {
     await ctx.reply('Translation failed. Try again.');
+  }
+});
+
+// Handle text messages — MUST be after all bot.command() handlers
+bot.on('text', async (ctx) => {
+  trackGroup(ctx);
+
+  if (!shouldRespond(ctx)) return;
+
+  const chatId = ctx.chat.id;
+  const userName = ctx.from.first_name || 'Someone';
+  const userMessage = `${userName}: ${ctx.message.text}`;
+
+  addMessage(chatId, 'user', userMessage);
+
+  try {
+    await ctx.sendChatAction('typing');
+    const reply = await askClaude(chatId, getHistory(chatId));
+    addMessage(chatId, 'assistant', reply);
+    await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
+      ctx.reply(reply)
+    );
+  } catch (err) {
+    console.error('Error:', err.status, err.message, err.error);
+    const history = getHistory(chatId);
+    if (history.length > 0 && history[history.length - 1].role === 'user') {
+      history.pop();
+    }
+    await ctx.reply('Sorry, I hit a snag. Try again in a moment.');
   }
 });
 
