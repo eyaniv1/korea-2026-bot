@@ -3,12 +3,66 @@ const { Telegraf } = require('telegraf');
 const Anthropic = require('@anthropic-ai/sdk');
 const Groq = require('groq-sdk');
 const cron = require('node-cron');
+const express = require('express');
+const cors = require('cors');
 const { TRIP_CONTEXT } = require('./trip-context');
 const { findNearbyPois, addCustomPoi, getDistance } = require('./poi-database');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// ===== EXPRESS HTTP SERVER (for web app chat) =====
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Chat history for web app (separate from Telegram)
+const webChatHistory = [];
+const WEB_MAX_HISTORY = 30;
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ error: 'No message provided' });
+
+    webChatHistory.push({ role: 'user', content: message });
+    if (webChatHistory.length > WEB_MAX_HISTORY) {
+      webChatHistory.splice(0, webChatHistory.length - WEB_MAX_HISTORY);
+    }
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: TRIP_CONTEXT + '\n\nYou are chatting via the trip companion web app. Keep answers short and mobile-friendly. Use bullet points for lists.',
+      tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+      messages: webChatHistory,
+    });
+
+    let reply = '';
+    for (const block of response.content) {
+      if (block.type === 'text') reply += block.text;
+    }
+
+    webChatHistory.push({ role: 'assistant', content: reply });
+
+    res.json({ reply });
+  } catch (err) {
+    console.error('Web chat error:', err.message);
+    // Remove dangling user message
+    if (webChatHistory.length > 0 && webChatHistory[webChatHistory.length - 1].role === 'user') {
+      webChatHistory.pop();
+    }
+    res.status(500).json({ error: 'Sorry, something went wrong. Try again.' });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', pois: require('./poi-database').getAllPois().length });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🌐 Web chat API running on port ${PORT}`));
 
 // Store conversation history per chat (group or private)
 const conversations = new Map();
