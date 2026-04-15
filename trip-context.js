@@ -7,7 +7,7 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - **Eran** (61, feels 48) — the dad, trip organizer
 - **Michal** (54, feels 35) — Eran's wife
 - **Jonathan** (22) — their son
-- **Ophir** (22) — Jonathan's girlfriend
+- **Ofir** (22) — Jonathan's girlfriend
 
 ## Trip Details
 - **Arrival:** April 23, 2026 at 10:50 in Seoul (Incheon Airport)
