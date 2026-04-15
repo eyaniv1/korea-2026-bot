@@ -528,6 +528,15 @@ bot.command('nearby', async (ctx) => {
   );
 });
 
+// /clearpois — remove all custom POIs
+bot.command('clearpois', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change WanderGuide settings.');
+  const count = require('./poi-database').customPois.length;
+  require('./poi-database').customPois.length = 0;
+  ctx.reply(`🗑️ Cleared ${count} custom POI(s). Static database (${require('./poi-database').getAllPois().length} POIs) unchanged.`);
+});
+
 // /addpoi lat lng description — add a custom POI
 bot.command('addpoi', (ctx) => {
   trackGroup(ctx);
@@ -574,7 +583,8 @@ bot.command('help', (ctx) => {
     `/cooldown <minutes> — time between alerts (default 20)\n` +
     `/realert <hours> — re-alert same POI after (default 4)\n` +
     `/nearby — show POIs within 1km\n` +
-    `/addpoi <lat> <lng> <desc> — add custom POI\n\n` +
+    `/addpoi <lat> <lng> <desc> — add custom POI\n` +
+    `/clearpois — remove all custom POIs\n\n` +
     `*Admin (Eran only):*\n` +
     `/quiet — only respond to commands\n` +
     `/normal — respond when mentioned (default)\n` +
