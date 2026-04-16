@@ -47,7 +47,7 @@ function sendPushoverToAll(title, message, url) {
 // ===== EXPRESS HTTP SERVER (for web app) =====
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Per-user chat sessions
 const webSessions = new Map();

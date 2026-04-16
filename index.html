@@ -169,7 +169,7 @@ body{padding-bottom:70px;overflow-x:hidden}
   <div class="chat-typing" id="chat-typing">Thinking...</div>
   <div class="chat-input-row">
     <button class="chat-photo-btn" onclick="document.getElementById('chat-file').click()">📷</button>
-    <input type="file" id="chat-file" accept="image/*" capture="environment" style="display:none" onchange="handleChatImage(this)">
+    <input type="file" id="chat-file" accept="image/*" style="display:none" onchange="handleChatImage(this)">
     <input type="text" class="chat-input" id="chat-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
     <button class="chat-send" id="chat-send" onclick="sendChat()">Send</button>
   </div>
@@ -842,7 +842,7 @@ function clearChatImage(){
 async function sendChat(){
   const input=document.getElementById('chat-input');
   const msg=input.value.trim();
-  if(!msg)return;
+  if(!msg&&!pendingImage)return;
   input.value='';
 
   // Handle local WanderGuide commands (before image processing)
