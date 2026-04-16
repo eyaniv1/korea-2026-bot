@@ -853,13 +853,28 @@ async function sendChat(){
     }else addChatMsg('bot','📍 Polling interval must be between 5 and 120 seconds.');
     return;
   }
+  const pushMatch=lower.match(/register pushover\s+([a-z0-9]+)/i);
+  if(pushMatch){
+    const key=pushMatch[1];
+    try{
+      const res=await fetch(API_BASE+'/api/pushover/register',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:sessionId,userKey:key})
+      });
+      const data=await res.json();
+      if(data.success)addChatMsg('bot',`✅ Pushover registered! You'll now receive native push notifications for proximity alerts. Registered users: ${data.users.join(', ')}`);
+      else addChatMsg('bot','❌ Failed to register. Check your user key.');
+    }catch(e){addChatMsg('bot','❌ Could not connect to server. Try again.');}
+    return;
+  }
   if(lower==='clear chat'||lower==='reset chat'){
     localStorage.removeItem('chat_messages');
     document.getElementById('chat-messages').innerHTML='<div class="chat-msg bot"><div class="bubble">Chat cleared. How can I help?</div></div>';
     return;
   }
   if(lower==='help'||lower==='commands'||lower==='/help'){
-    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br>• <b>poll 10</b> — GPS check interval in seconds (5-120, default 20)<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips<br><br><b>Other:</b><br>• <b>clear chat</b> — wipe visible chat history`);
+    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br>• <b>poll 10</b> — GPS check interval in seconds (5-120, default 20)<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips<br><br><b>Notifications:</b><br>• <b>register pushover [userkey]</b> — enable native push notifications (download Pushover app first)<br><br><b>Other:</b><br>• <b>clear chat</b> — wipe visible chat history`);
     return;
   }
 
