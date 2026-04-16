@@ -819,6 +819,10 @@ async function sendChat(){
     addChatMsg('bot','📍 Alert history cleared. All POIs will alert again.');
     return;
   }
+  if(lower==='help'||lower==='commands'||lower==='/help'){
+    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips`);
+    return;
+  }
 
   // If user mentions "here" or "my location", append GPS if available
   let enrichedMsg=msg;
