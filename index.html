@@ -144,6 +144,11 @@ body{padding-bottom:70px;overflow-x:hidden}
 .chat-input::placeholder{color:#555}
 .chat-send{background:#e74c3c;border:none;border-radius:10px;padding:10px 16px;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0}
 .chat-send:disabled{opacity:.4;cursor:not-allowed}
+.chat-photo-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:10px 4px;flex-shrink:0}
+.chat-img-preview{margin:6px 12px;position:relative;display:none}
+.chat-img-preview img{max-height:120px;border-radius:8px;border:1px solid #2a2a5a}
+.chat-img-preview .remove-img{position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.chat-msg .bubble img{max-width:100%;border-radius:8px;margin-bottom:6px}
 .chat-typing{padding:8px 16px;font-size:12px;color:#888;font-style:italic;display:none}
 .chat-typing.show{display:block}
 </style>
@@ -160,8 +165,11 @@ body{padding-bottom:70px;overflow-x:hidden}
   <div class="chat-messages" id="chat-messages">
     <div class="chat-msg bot"><div class="bubble">Hi! I'm your Korea trip assistant. Ask me anything — directions, restaurants, translations, or trip questions.</div></div>
   </div>
+  <div class="chat-img-preview" id="chat-img-preview"><img id="chat-img-thumb"><button class="remove-img" onclick="clearChatImage()">✕</button></div>
   <div class="chat-typing" id="chat-typing">Thinking...</div>
   <div class="chat-input-row">
+    <button class="chat-photo-btn" onclick="document.getElementById('chat-file').click()">📷</button>
+    <input type="file" id="chat-file" accept="image/*" capture="environment" style="display:none" onchange="handleChatImage(this)">
     <input type="text" class="chat-input" id="chat-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
     <button class="chat-send" id="chat-send" onclick="sendChat()">Send</button>
   </div>
@@ -808,15 +816,36 @@ function restoreChatMessages(){
   msgs.scrollTop=msgs.scrollHeight;
 }
 
+// Image handling for chat
+let pendingImage=null;
+
+function handleChatImage(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const base64=e.target.result;
+    pendingImage={data:base64.split(',')[1],mediaType:file.type||'image/jpeg'};
+    document.getElementById('chat-img-thumb').src=base64;
+    document.getElementById('chat-img-preview').style.display='inline-block';
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+function clearChatImage(){
+  pendingImage=null;
+  document.getElementById('chat-img-preview').style.display='none';
+  document.getElementById('chat-img-thumb').src='';
+}
+
 async function sendChat(){
   const input=document.getElementById('chat-input');
   const msg=input.value.trim();
   if(!msg)return;
   input.value='';
 
-  addChatMsg('user',msg.replace(/</g,'&lt;'));
-
-  // Handle local WanderGuide commands
+  // Handle local WanderGuide commands (before image processing)
   const lower=msg.toLowerCase().trim();
   if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'){
     setWanderSetting('enabled',true);
@@ -900,6 +929,14 @@ async function sendChat(){
     return;
   }
 
+  // Capture image before sending
+  let imageData=pendingImage;
+  pendingImage=null;
+  clearChatImage();
+
+  const userHtml=(imageData?`<img src="data:${imageData.mediaType};base64,${imageData.data}"><br>`:'')+(msg?msg.replace(/</g,'&lt;'):'📷 Photo');
+  addChatMsg('user',userHtml);
+
   // If user mentions "here" or "my location", append GPS if available
   let enrichedMsg=msg;
   if(userLat&&userLng&&(msg.toLowerCase().includes('here')||msg.toLowerCase().includes('my location')||msg.toLowerCase().includes('nearby'))){
@@ -910,10 +947,12 @@ async function sendChat(){
   document.getElementById('chat-send').disabled=true;
 
   try{
+    const payload={message:enrichedMsg||'What is this?'};
+    if(imageData)payload.image=imageData;
     const res=await fetch(API_BASE+'/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Session-Id':sessionId},
-      body:JSON.stringify({message:enrichedMsg})
+      body:JSON.stringify(payload)
     });
     const data=await res.json();
     const reply=data.reply||data.error||'No response';

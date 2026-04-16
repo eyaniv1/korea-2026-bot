@@ -66,20 +66,34 @@ function getWebSession(sessionId) {
 // Chat endpoint — per-user sessions via X-Session-Id header
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, image } = req.body;
     const sessionId = req.headers['x-session-id'] || 'default';
-    if (!message) return res.status(400).json({ error: 'No message provided' });
+    if (!message && !image) return res.status(400).json({ error: 'No message or image provided' });
 
     const history = getWebSession(sessionId);
-    history.push({ role: 'user', content: message });
+
+    // Build user content — text only or text + image
+    if (image) {
+      const content = [];
+      if (message) content.push({ type: 'text', text: message });
+      content.push({
+        type: 'image',
+        source: { type: 'base64', media_type: image.mediaType || 'image/jpeg', data: image.data }
+      });
+      history.push({ role: 'user', content });
+    } else {
+      history.push({ role: 'user', content: message });
+    }
     if (history.length > WEB_MAX_HISTORY) {
       history.splice(0, history.length - WEB_MAX_HISTORY);
     }
 
-    // Merge consecutive same-role messages
+    // Merge consecutive same-role messages (only merge strings, not image arrays)
     const cleaned = [];
     for (const msg of history) {
-      if (cleaned.length > 0 && cleaned[cleaned.length - 1].role === msg.role) {
+      if (cleaned.length > 0 && cleaned[cleaned.length - 1].role === msg.role
+          && typeof cleaned[cleaned.length - 1].content === 'string'
+          && typeof msg.content === 'string') {
         cleaned[cleaned.length - 1].content += '\n' + msg.content;
       } else {
         cleaned.push({ ...msg });
