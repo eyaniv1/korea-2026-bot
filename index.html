@@ -772,6 +772,54 @@ async function sendChat(){
 
   addChatMsg('user',msg.replace(/</g,'&lt;'));
 
+  // Handle local WanderGuide commands
+  const lower=msg.toLowerCase().trim();
+  if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'){
+    setWanderSetting('enabled',true);
+    addChatMsg('bot','📍 WanderGuide alerts <b>enabled</b>. Radius: '+getWanderSetting('radius',DEFAULT_RADIUS)+'m, cooldown: '+Math.round(getWanderSetting('cooldown',DEFAULT_COOLDOWN)/60000)+'min.');
+    return;
+  }
+  if(lower==='alerts off'||lower==='turn alerts off'||lower==='disable alerts'){
+    setWanderSetting('enabled',false);
+    addChatMsg('bot','📍 WanderGuide alerts <b>disabled</b>.');
+    return;
+  }
+  const radiusMatch=lower.match(/(?:set )?radius (?:to )?(\d+)/);
+  if(radiusMatch){
+    const r=parseInt(radiusMatch[1]);
+    if(r>=50&&r<=5000){setWanderSetting('radius',r);addChatMsg('bot',`📍 Alert radius set to <b>${r}m</b>`);}
+    else addChatMsg('bot','📍 Radius must be between 50 and 5000 meters.');
+    return;
+  }
+  const cdMatch=lower.match(/(?:set )?cooldown (?:to )?(\d+)/);
+  if(cdMatch){
+    const m=parseInt(cdMatch[1]);
+    if(m>=1&&m<=120){setWanderSetting('cooldown',m*60*1000);addChatMsg('bot',`📍 Cooldown set to <b>${m} minutes</b> between alerts.`);}
+    else addChatMsg('bot','📍 Cooldown must be between 1 and 120 minutes.');
+    return;
+  }
+  const rvMatch=lower.match(/(?:set )?re-?alert (?:to )?(\d+\.?\d*)/);
+  if(rvMatch){
+    const h=parseFloat(rvMatch[1]);
+    if(h>=0.5&&h<=24){setWanderSetting('revisit',h*3600*1000);addChatMsg('bot',`📍 Re-alert for same POI set to <b>${h} hours</b>.`);}
+    else addChatMsg('bot','📍 Re-alert must be between 0.5 and 24 hours.');
+    return;
+  }
+  if(lower==='wanderguide status'||lower==='alert status'||lower==='wg status'){
+    const enabled=getWanderSetting('enabled',true);
+    const r=getWanderSetting('radius',DEFAULT_RADIUS);
+    const cd=Math.round(getWanderSetting('cooldown',DEFAULT_COOLDOWN)/60000);
+    const rv=getWanderSetting('revisit',DEFAULT_REVISIT)/3600000;
+    const gps=userLat?`${userLat.toFixed(4)}, ${userLng.toFixed(4)}`:'not available';
+    addChatMsg('bot',`📍 <b>WanderGuide Status</b><br>• Alerts: ${enabled?'ON':'OFF'}<br>• Radius: ${r}m<br>• Cooldown: ${cd} min<br>• Re-alert: ${rv} hrs<br>• GPS: ${gps}<br>• POIs loaded: ${poiDatabase.length}`);
+    return;
+  }
+  if(lower==='clear alerts'||lower==='reset alerts'){
+    localStorage.removeItem('wander_alerts');
+    addChatMsg('bot','📍 Alert history cleared. All POIs will alert again.');
+    return;
+  }
+
   // If user mentions "here" or "my location", append GPS if available
   let enrichedMsg=msg;
   if(userLat&&userLng&&(msg.toLowerCase().includes('here')||msg.toLowerCase().includes('my location')||msg.toLowerCase().includes('nearby'))){
@@ -801,10 +849,28 @@ async function sendChat(){
 // ===== BROWSER GPS + PROXIMITY =====
 let userLat=null,userLng=null;
 let poiDatabase=[];
-let alertedWebPois={};// poiName→timestamp
-const WEB_ALERT_RADIUS=300;
-const WEB_ALERT_COOLDOWN=20*60*1000;
-const WEB_REVISIT_COOLDOWN=4*60*60*1000;
+
+// Per-user settings with localStorage persistence
+function loadWanderSettings(){
+  try{return JSON.parse(localStorage.getItem('wander_settings'))||{}}catch(e){return{}}
+}
+function saveWanderSettings(s){localStorage.setItem('wander_settings',JSON.stringify(s))}
+function getWanderSetting(key,def){return loadWanderSettings()[key]??def}
+function setWanderSetting(key,val){const s=loadWanderSettings();s[key]=val;saveWanderSettings(s)}
+
+// Alert history persisted in localStorage
+function loadAlertHistory(){
+  try{return JSON.parse(localStorage.getItem('wander_alerts'))||{}}catch(e){return{}}
+}
+function saveAlertHistory(h){localStorage.setItem('wander_alerts',JSON.stringify(h))}
+function getAlertTime(poiName){return loadAlertHistory()[poiName]||0}
+function setAlertTime(poiName){const h=loadAlertHistory();h[poiName]=Date.now();saveAlertHistory(h)}
+function getLastAlertTimeAny(){const h=loadAlertHistory();return Math.max(...Object.values(h),0)}
+
+// Defaults
+const DEFAULT_RADIUS=300;
+const DEFAULT_COOLDOWN=20*60*1000;
+const DEFAULT_REVISIT=4*60*60*1000;
 
 // Create alert sound (short chime)
 const alertAudioCtx=typeof AudioContext!=='undefined'?new AudioContext():null;
@@ -830,17 +896,22 @@ function haversine(lat1,lng1,lat2,lng2){
 
 function checkWebProximity(){
   if(!userLat||!userLng||poiDatabase.length===0)return;
+  if(getWanderSetting('enabled',true)===false)return;
   const now=Date.now();
+  const radius=getWanderSetting('radius',DEFAULT_RADIUS);
+  const cooldown=getWanderSetting('cooldown',DEFAULT_COOLDOWN);
+  const revisit=getWanderSetting('revisit',DEFAULT_REVISIT);
+
   for(const poi of poiDatabase){
     const dist=Math.round(haversine(userLat,userLng,poi.lat,poi.lng));
-    if(dist>WEB_ALERT_RADIUS)continue;
-    const lastAlert=alertedWebPois[poi.name];
-    if(lastAlert&&(now-lastAlert)<WEB_REVISIT_COOLDOWN)continue;
+    if(dist>radius)continue;
+    const lastAlert=getAlertTime(poi.name);
+    if(lastAlert&&(now-lastAlert)<revisit)continue;
     // Check global cooldown
-    const lastAny=Math.max(...Object.values(alertedWebPois),0);
-    if(lastAny&&(now-lastAny)<WEB_ALERT_COOLDOWN)continue;
+    const lastAny=getLastAlertTimeAny();
+    if(lastAny&&(now-lastAny)<cooldown)continue;
 
-    alertedWebPois[poi.name]=now;
+    setAlertTime(poi.name);
     // Show alert in chat
     const alertMsg=`📍 <b>You're ${dist}m from ${poi.name}!</b><br>${poi.desc||''}<br><a href="https://www.google.com/maps/search/${poi.name}+South+Korea" target="_blank">🗺️ Open in Maps</a>`;
     addChatMsg('bot',alertMsg);
