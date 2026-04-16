@@ -811,7 +811,8 @@ async function sendChat(){
     const cd=Math.round(getWanderSetting('cooldown',DEFAULT_COOLDOWN)/60000);
     const rv=getWanderSetting('revisit',DEFAULT_REVISIT)/3600000;
     const gps=userLat?`${userLat.toFixed(4)}, ${userLng.toFixed(4)}`:'not available';
-    addChatMsg('bot',`📍 <b>WanderGuide Status</b><br>• Alerts: ${enabled?'ON':'OFF'}<br>• Radius: ${r}m<br>• Cooldown: ${cd} min<br>• Re-alert: ${rv} hrs<br>• GPS: ${gps}<br>• POIs loaded: ${poiDatabase.length}`);
+    const poll=Math.round(getWanderSetting('poll',20000)/1000);
+    addChatMsg('bot',`📍 <b>WanderGuide Status</b><br>• Alerts: ${enabled?'ON':'OFF'}<br>• Radius: ${r}m<br>• Cooldown: ${cd} min<br>• Re-alert: ${rv} hrs<br>• GPS poll: ${poll}s<br>• GPS: ${gps}<br>• POIs loaded: ${poiDatabase.length}`);
     return;
   }
   if(lower==='clear alerts'||lower==='reset alerts'){
@@ -819,8 +820,19 @@ async function sendChat(){
     addChatMsg('bot','📍 Alert history cleared. All POIs will alert again.');
     return;
   }
+  const pollMatch=lower.match(/(?:set )?poll(?:ing)? (?:to )?(\d+)/);
+  if(pollMatch){
+    const s=parseInt(pollMatch[1]);
+    if(s>=5&&s<=120){
+      setWanderSetting('poll',s*1000);
+      clearInterval(proximityInterval);
+      proximityInterval=setInterval(checkWebProximity,s*1000);
+      addChatMsg('bot',`📍 GPS polling set to <b>every ${s} seconds</b>.`);
+    }else addChatMsg('bot','📍 Polling interval must be between 5 and 120 seconds.');
+    return;
+  }
   if(lower==='help'||lower==='commands'||lower==='/help'){
-    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips`);
+    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br>• <b>poll 10</b> — GPS check interval in seconds (5-120, default 20)<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips`);
     return;
   }
 
@@ -853,6 +865,8 @@ async function sendChat(){
 // ===== BROWSER GPS + PROXIMITY =====
 let userLat=null,userLng=null;
 let poiDatabase=[];
+
+let proximityInterval=null;
 
 // Per-user settings with localStorage persistence
 function loadWanderSettings(){
@@ -983,8 +997,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   setInterval(fetchPois,5*60*1000);
   // Poll broadcasts every 60 seconds
   setInterval(pollBroadcasts,60*1000);
-  // Run proximity check every 30 seconds
-  setInterval(checkWebProximity,30*1000);
+  // Run proximity check (default 20 seconds, configurable via "poll" command)
+  const pollInterval=getWanderSetting('poll',20000);
+  proximityInterval=setInterval(checkWebProximity,pollInterval);
 });
 
 document.addEventListener('DOMContentLoaded',build);
