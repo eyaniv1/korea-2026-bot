@@ -214,9 +214,37 @@ project-root/
 ### Chat Panel
 - Floating 💬 button, bottom-right, above nav bar
 - Opens a slide-up panel with message history
-- Sends POST to Railway Express endpoint `/api/chat`
+- Per-user sessions via random session ID stored in localStorage
+- Sends POST to Railway Express endpoint `/api/chat` with `X-Session-Id` header
 - Simple markdown rendering (bold, italic, line breaks)
 - Typing indicator while waiting for response
+- Chat messages persisted in localStorage (last 100) — survive app close/reopen
+- Local command interception for WanderGuide controls (no server round-trip needed)
+- User's GPS coordinates auto-appended to messages mentioning "here", "nearby", "my location"
+
+### Web Chat Commands (processed locally)
+| Command | What |
+|---------|------|
+| `alerts on/off` | Enable/disable proximity alerts |
+| `radius <meters>` | Set alert distance (50-5000m, default 300) |
+| `cooldown <minutes>` | Time between alerts (1-120, default 20) |
+| `realert <hours>` | Re-alert same POI (0.5-24, default 4) |
+| `poll <seconds>` | GPS check interval (5-120, default 20) |
+| `wanderguide status` | Show all settings, GPS, POI count |
+| `clear alerts` | Reset alert history |
+| `clear chat` | Wipe visible chat history |
+| `help` | List all commands |
+| Natural language POI add/remove | Via Claude (server-side processing) |
+| Everything else | Sent to Claude API for AI response |
+
+### Browser GPS + Client-Side Proximity
+- `navigator.geolocation.watchPosition()` for continuous GPS tracking
+- POI database fetched from server on load, refreshed every 5 minutes
+- Proximity checks run locally every N seconds (configurable via `poll` command)
+- Haversine formula for distance calculation
+- Alert triggers: green toast notification at top of screen + chime sound + message in chat
+- AudioContext generates short sine wave chime (works with AirPods/speakers)
+- First user interaction required to unlock AudioContext (iOS requirement)
 
 ### iOS Safari Considerations
 - No `apple-mobile-web-app-capable` meta tag (breaks new-tab link behavior)
@@ -273,9 +301,19 @@ project-root/
 - 10:00 PM local time — photo prompt
 
 ### Express API
-- `POST /api/chat` — web app chat endpoint (separate history from Telegram)
-- `GET /api/health` — health check
+- `POST /api/chat` — web app chat endpoint, per-user sessions via `X-Session-Id` header. Handles natural language POI add/remove by instructing Claude to emit JSON commands in responses.
+- `GET /api/pois` — returns full POI database (static + custom) for web app proximity checks
+- `POST /api/pois` — add a custom POI (name, lat, lng, desc)
+- `DELETE /api/pois` — clear all custom POIs
+- `GET /api/broadcasts` — returns scheduled broadcast messages since a given timestamp
+- `GET /api/health` — health check (POI count, session count)
 - CORS enabled for cross-origin requests from GitHub Pages
+
+### Broadcast System
+- Scheduled messages (morning briefing, evening reminder, photo prompt) stored in broadcast queue
+- Web app polls `/api/broadcasts` every 60 seconds
+- New broadcasts appear in all users' web chat as 📢 messages with chime sound
+- Works even if no Telegram group is active
 
 ---
 
@@ -346,10 +384,15 @@ When the skill is invoked for a new trip, follow this sequence:
 - **GitHub Pages + Railway** — free/cheap hosting, auto-deploy on push
 - **DuckDuckGo links** — avoids iOS Safari Universal Links interception (Google links open Google app)
 - **Show/hide pages** — more reliable than CSS translateX for Leaflet maps
-- **Persistent ToDo checkboxes** — localStorage survives browser refresh
+- **localStorage for persistence** — ToDo checkboxes, chat history, WanderGuide settings, alert history all survive app close/reopen
+- **Per-user sessions** — cookie/localStorage session ID gives each person their own chat context
+- **Client-side proximity checks** — faster, works offline, no server dependency for GPS
+- **POI database on server, checks on client** — best of both worlds (shared data, local processing)
 - **Voucher PDFs in git repo** — accessible from anywhere via GitHub Pages
 - **Floating chat bubble** — non-intrusive, always accessible
 - **Date-based navigation** (23/4 instead of Day 1) — more practical during the trip
+- **Local command interception** — WanderGuide settings processed instantly without server round-trip
+- **Broadcast system** — scheduled messages reach web app users without Telegram dependency
 
 ### What Didn't Work
 - **CSS translateX page system** — breaks Leaflet map rendering on non-visible pages
@@ -370,12 +413,45 @@ When the skill is invoked for a new trip, follow this sequence:
 - `bot.on('text')` must be registered AFTER all `bot.command()` handlers
 - Consecutive same-role messages break Claude API — need message merging
 - Live location updates come as `edited_message`, not `message`
-- Railway redeploys clear in-memory state (custom POIs, chat history, alert cooldowns)
+- Railway redeploys clear in-memory state (custom POIs, server chat history, broadcast queue). Mitigated: WanderGuide settings, alert history, and visible chat messages are persisted client-side in localStorage.
 - Telegram group privacy must be disabled AND bot removed/re-added for it to take effect
 
 ---
 
-## 10. Dependencies
+## 10. Persistence Model
+
+### Client-side (localStorage — per device, survives app close/reopen/restart)
+| Key | Content | Max Size |
+|-----|---------|----------|
+| `chat_session` | Random session ID for per-user chat | ~20 bytes |
+| `chat_messages` | Visible chat message history (role + HTML) | Last 100 messages |
+| `wander_settings` | Radius, cooldown, re-alert, poll interval, enabled flag | ~200 bytes |
+| `wander_alerts` | POI name → last alert timestamp | Grows with POIs visited |
+| `todo_<id>` | Individual ToDo checkbox state ("1" = checked) | ~10 bytes each |
+
+### Server-side (Railway memory — lost on redeploy)
+| Data | Scope | Lifetime |
+|------|-------|----------|
+| Web chat history per session | Per session ID | Until redeploy |
+| Telegram chat history per chat | Per Telegram chat ID | Until redeploy |
+| Custom POIs (added via /addpoi or web chat) | Global (all users) | Until redeploy |
+| Broadcast messages queue | Global | Last 20 messages |
+| WanderGuide Telegram alert state | Per chat ID | Until redeploy |
+| Active Telegram groups set | Global | Until redeploy |
+
+### What survives Railway redeploy
+- ✅ All localStorage data (client-side)
+- ✅ Static POI database (in code)
+- ✅ Trip context / itinerary (in code)
+- ❌ Chat conversation context (server memory)
+- ❌ Custom POIs (server memory)
+- ❌ Broadcast messages (server memory)
+
+**Practical impact:** Once code changes stop (trip starts), Railway doesn't redeploy and everything stays stable for the entire trip duration.
+
+---
+
+## 11. Dependencies (unchanged)
 
 ### npm packages
 ```json
@@ -396,7 +472,7 @@ When the skill is invoked for a new trip, follow this sequence:
 
 ---
 
-## 11. Customization Points
+## 12. Customization Points
 
 When creating a new trip, these are the main things that change:
 1. **Trip context** — dates, travelers, dietary restrictions, preferences
