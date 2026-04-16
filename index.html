@@ -735,9 +735,13 @@ document.addEventListener('DOMContentLoaded',function(){
   observer.observe(document.body,{childList:true,subtree:true});
 });
 
-// ===== CHAT =====
-const CHAT_API='https://korea-2026-bot-production.up.railway.app/api/chat';
+// ===== CHAT + WANDERGUIDE (Web) =====
+const API_BASE='https://korea-2026-bot-production.up.railway.app';
 let chatOpen=false;
+
+// Per-user session ID (persists in localStorage)
+let sessionId=localStorage.getItem('chat_session');
+if(!sessionId){sessionId='web_'+Math.random().toString(36).substring(2,12);localStorage.setItem('chat_session',sessionId)}
 
 function toggleChat(){
   chatOpen=!chatOpen;
@@ -746,44 +750,167 @@ function toggleChat(){
   if(chatOpen)document.getElementById('chat-input').focus();
 }
 
+function formatReply(reply){
+  return reply
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+    .replace(/\*(.*?)\*/g,'<i>$1</i>')
+    .replace(/\n- /g,'\n• ')
+    .replace(/\n/g,'<br>');
+}
+
+function addChatMsg(role,html){
+  const msgs=document.getElementById('chat-messages');
+  msgs.innerHTML+=`<div class="chat-msg ${role}"><div class="bubble">${html}</div></div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
 async function sendChat(){
   const input=document.getElementById('chat-input');
   const msg=input.value.trim();
   if(!msg)return;
   input.value='';
 
-  // Add user message
-  const msgs=document.getElementById('chat-messages');
-  msgs.innerHTML+=`<div class="chat-msg user"><div class="bubble">${msg.replace(/</g,'&lt;')}</div></div>`;
-  msgs.scrollTop=msgs.scrollHeight;
+  addChatMsg('user',msg.replace(/</g,'&lt;'));
 
-  // Show typing
+  // If user mentions "here" or "my location", append GPS if available
+  let enrichedMsg=msg;
+  if(userLat&&userLng&&(msg.toLowerCase().includes('here')||msg.toLowerCase().includes('my location')||msg.toLowerCase().includes('nearby'))){
+    enrichedMsg+=` [User location: ${userLat.toFixed(5)}, ${userLng.toFixed(5)}]`;
+  }
+
   document.getElementById('chat-typing').classList.add('show');
   document.getElementById('chat-send').disabled=true;
 
   try{
-    const res=await fetch(CHAT_API,{
+    const res=await fetch(API_BASE+'/api/chat',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:msg})
+      headers:{'Content-Type':'application/json','X-Session-Id':sessionId},
+      body:JSON.stringify({message:enrichedMsg})
     });
     const data=await res.json();
     const reply=data.reply||data.error||'No response';
-    // Simple markdown: bold, links, bullets
-    const formatted=reply
-      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-      .replace(/\*(.*?)\*/g,'<i>$1</i>')
-      .replace(/\n- /g,'\n• ')
-      .replace(/\n/g,'<br>');
-    msgs.innerHTML+=`<div class="chat-msg bot"><div class="bubble">${formatted}</div></div>`;
+    addChatMsg('bot',formatReply(reply));
   }catch(err){
-    msgs.innerHTML+=`<div class="chat-msg bot"><div class="bubble">Sorry, couldn't connect. Check your internet and try again.</div></div>`;
+    addChatMsg('bot','Sorry, couldn\'t connect. Check your internet and try again.');
   }
 
   document.getElementById('chat-typing').classList.remove('show');
   document.getElementById('chat-send').disabled=false;
-  msgs.scrollTop=msgs.scrollHeight;
 }
+
+// ===== BROWSER GPS + PROXIMITY =====
+let userLat=null,userLng=null;
+let poiDatabase=[];
+let alertedWebPois={};// poiName→timestamp
+const WEB_ALERT_RADIUS=300;
+const WEB_ALERT_COOLDOWN=20*60*1000;
+const WEB_REVISIT_COOLDOWN=4*60*60*1000;
+
+// Create alert sound (short chime)
+const alertAudioCtx=typeof AudioContext!=='undefined'?new AudioContext():null;
+function playAlertSound(){
+  if(!alertAudioCtx)return;
+  if(alertAudioCtx.state==='suspended')alertAudioCtx.resume();
+  const o=alertAudioCtx.createOscillator();
+  const g=alertAudioCtx.createGain();
+  o.connect(g);g.connect(alertAudioCtx.destination);
+  o.frequency.value=880;o.type='sine';
+  g.gain.setValueAtTime(0.3,alertAudioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.01,alertAudioCtx.currentTime+0.5);
+  o.start();o.stop(alertAudioCtx.currentTime+0.5);
+}
+
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function checkWebProximity(){
+  if(!userLat||!userLng||poiDatabase.length===0)return;
+  const now=Date.now();
+  for(const poi of poiDatabase){
+    const dist=Math.round(haversine(userLat,userLng,poi.lat,poi.lng));
+    if(dist>WEB_ALERT_RADIUS)continue;
+    const lastAlert=alertedWebPois[poi.name];
+    if(lastAlert&&(now-lastAlert)<WEB_REVISIT_COOLDOWN)continue;
+    // Check global cooldown
+    const lastAny=Math.max(...Object.values(alertedWebPois),0);
+    if(lastAny&&(now-lastAny)<WEB_ALERT_COOLDOWN)continue;
+
+    alertedWebPois[poi.name]=now;
+    // Show alert in chat
+    const alertMsg=`📍 <b>You're ${dist}m from ${poi.name}!</b><br>${poi.desc||''}<br><a href="https://www.google.com/maps/search/${poi.name}+South+Korea" target="_blank">🗺️ Open in Maps</a>`;
+    addChatMsg('bot',alertMsg);
+    playAlertSound();
+    // Show toast notification
+    showProximityToast(poi.name,dist);
+    break;// one at a time
+  }
+}
+
+function showProximityToast(name,dist){
+  let toast=document.getElementById('proximity-toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='proximity-toast';
+    toast.style.cssText='position:fixed;top:20px;left:16px;right:16px;z-index:3000;background:#1a4a1a;border:1px solid #2ecc71;border-radius:12px;padding:14px 16px;color:#2ecc71;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:opacity .3s;cursor:pointer';
+    toast.onclick=()=>{toast.style.opacity='0';setTimeout(()=>toast.remove(),300);toggleChat()};
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML=`📍 <b>${dist}m from ${name}</b> — tap to see details`;
+  toast.style.opacity='1';
+  setTimeout(()=>{if(toast)toast.style.opacity='0';setTimeout(()=>{if(toast.parentNode)toast.remove()},300)},8000);
+}
+
+// Start GPS tracking
+function startGPS(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(
+    pos=>{userLat=pos.coords.latitude;userLng=pos.coords.longitude;checkWebProximity()},
+    err=>{console.log('GPS error:',err.message)},
+    {enableHighAccuracy:true,maximumAge:30000,timeout:10000}
+  );
+}
+
+// Fetch POI database from server
+async function fetchPois(){
+  try{
+    const res=await fetch(API_BASE+'/api/pois');
+    poiDatabase=await res.json();
+    console.log('POI database loaded:',poiDatabase.length,'places');
+  }catch(err){console.log('Could not load POI database:',err.message)}
+}
+
+// Poll for broadcast messages (scheduled messages)
+let lastBroadcastTime=Date.now();
+async function pollBroadcasts(){
+  try{
+    const res=await fetch(API_BASE+'/api/broadcasts?since='+lastBroadcastTime);
+    const msgs=await res.json();
+    for(const m of msgs){
+      addChatMsg('bot','📢 '+formatReply(m.text));
+      if(m.time>lastBroadcastTime)lastBroadcastTime=m.time;
+      playAlertSound();
+    }
+  }catch(err){/* silent */}
+}
+
+// Initialize GPS, POIs, and broadcast polling
+document.addEventListener('DOMContentLoaded',()=>{
+  // Enable audio context on first user interaction (iOS requirement)
+  document.addEventListener('click',()=>{if(alertAudioCtx&&alertAudioCtx.state==='suspended')alertAudioCtx.resume()},{once:true});
+  startGPS();
+  fetchPois();
+  // Re-fetch POIs every 5 min (picks up newly added POIs)
+  setInterval(fetchPois,5*60*1000);
+  // Poll broadcasts every 60 seconds
+  setInterval(pollBroadcasts,60*1000);
+  // Run proximity check every 30 seconds
+  setInterval(checkWebProximity,30*1000);
+});
 
 document.addEventListener('DOMContentLoaded',build);
 </script>

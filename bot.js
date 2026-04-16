@@ -12,31 +12,54 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ===== EXPRESS HTTP SERVER (for web app chat) =====
+// ===== EXPRESS HTTP SERVER (for web app) =====
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Chat history for web app (separate from Telegram)
-const webChatHistory = [];
+// Per-user chat sessions
+const webSessions = new Map();
 const WEB_MAX_HISTORY = 30;
 
+// Broadcast messages (scheduled messages visible to all web users)
+const broadcastMessages = [];
+
+function getWebSession(sessionId) {
+  if (!webSessions.has(sessionId)) {
+    webSessions.set(sessionId, []);
+  }
+  return webSessions.get(sessionId);
+}
+
+// Chat endpoint — per-user sessions via X-Session-Id header
 app.post('/api/chat', async (req, res) => {
   try {
     const { message } = req.body;
+    const sessionId = req.headers['x-session-id'] || 'default';
     if (!message) return res.status(400).json({ error: 'No message provided' });
 
-    webChatHistory.push({ role: 'user', content: message });
-    if (webChatHistory.length > WEB_MAX_HISTORY) {
-      webChatHistory.splice(0, webChatHistory.length - WEB_MAX_HISTORY);
+    const history = getWebSession(sessionId);
+    history.push({ role: 'user', content: message });
+    if (history.length > WEB_MAX_HISTORY) {
+      history.splice(0, history.length - WEB_MAX_HISTORY);
+    }
+
+    // Merge consecutive same-role messages
+    const cleaned = [];
+    for (const msg of history) {
+      if (cleaned.length > 0 && cleaned[cleaned.length - 1].role === msg.role) {
+        cleaned[cleaned.length - 1].content += '\n' + msg.content;
+      } else {
+        cleaned.push({ ...msg });
+      }
     }
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: TRIP_CONTEXT + '\n\nYou are chatting via the trip companion web app. Keep answers short and mobile-friendly. Use bullet points for lists.',
+      system: TRIP_CONTEXT + '\n\nYou are chatting via the trip companion web app. Keep answers short and mobile-friendly. Use bullet points for lists.\n\nIf the user asks to add a POI, extract the coordinates and description and respond with a JSON block like: {"addPoi":{"lat":37.5,"lng":126.9,"name":"Place name","desc":"Description"}} followed by a confirmation message.\n\nIf the user asks to remove/clear their POIs, respond with {"clearPois":true} followed by a confirmation.',
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
-      messages: webChatHistory,
+      messages: cleaned,
     });
 
     let reply = '';
@@ -44,25 +67,75 @@ app.post('/api/chat', async (req, res) => {
       if (block.type === 'text') reply += block.text;
     }
 
-    webChatHistory.push({ role: 'assistant', content: reply });
+    // Check for POI commands in the reply
+    const addPoiMatch = reply.match(/\{"addPoi":\s*(\{[^}]+\})\}/);
+    if (addPoiMatch) {
+      try {
+        const poi = JSON.parse(addPoiMatch[1]);
+        addCustomPoi(poi.name || poi.desc.substring(0, 50), poi.lat, poi.lng, poi.desc);
+        reply = reply.replace(/\{"addPoi":[^}]+\}\}/, '').trim();
+      } catch(e) { /* ignore parse errors */ }
+    }
+    const clearMatch = reply.match(/\{"clearPois":\s*true\s*\}/);
+    if (clearMatch) {
+      require('./poi-database').customPois.length = 0;
+      reply = reply.replace(/\{"clearPois":\s*true\s*\}/, '').trim();
+    }
+
+    history.push({ role: 'assistant', content: reply });
 
     res.json({ reply });
   } catch (err) {
     console.error('Web chat error:', err.message);
-    // Remove dangling user message
-    if (webChatHistory.length > 0 && webChatHistory[webChatHistory.length - 1].role === 'user') {
-      webChatHistory.pop();
+    const sessionId = req.headers['x-session-id'] || 'default';
+    const history = getWebSession(sessionId);
+    if (history.length > 0 && history[history.length - 1].role === 'user') {
+      history.pop();
     }
     res.status(500).json({ error: 'Sorry, something went wrong. Try again.' });
   }
 });
 
+// POI database endpoint
+app.get('/api/pois', (req, res) => {
+  res.json(require('./poi-database').getAllPois());
+});
+
+// Add POI endpoint (for web app direct add)
+app.post('/api/pois', (req, res) => {
+  const { name, lat, lng, desc } = req.body;
+  if (!lat || !lng || !desc) return res.status(400).json({ error: 'lat, lng, desc required' });
+  addCustomPoi(name || desc.substring(0, 50), parseFloat(lat), parseFloat(lng), desc);
+  res.json({ success: true, total: require('./poi-database').getAllPois().length });
+});
+
+// Clear custom POIs
+app.delete('/api/pois', (req, res) => {
+  require('./poi-database').customPois.length = 0;
+  res.json({ success: true });
+});
+
+// Broadcast messages endpoint (scheduled messages for web app)
+app.get('/api/broadcasts', (req, res) => {
+  const since = parseInt(req.query.since) || 0;
+  const msgs = broadcastMessages.filter(m => m.time > since);
+  res.json(msgs);
+});
+
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', pois: require('./poi-database').getAllPois().length });
+  res.json({ status: 'ok', pois: require('./poi-database').getAllPois().length, sessions: webSessions.size });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🌐 Web chat API running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🌐 Web API running on port ${PORT}`));
+
+// Helper to add broadcast message (called from scheduled messages)
+function addBroadcast(text) {
+  broadcastMessages.push({ text, time: Date.now() });
+  // Keep last 20 broadcasts
+  if (broadcastMessages.length > 20) broadcastMessages.splice(0, broadcastMessages.length - 20);
+}
 
 // Store conversation history per chat (group or private)
 const conversations = new Map();
@@ -205,6 +278,7 @@ async function askClaude(chatId, messages) {
 
 // Send a proactive message to all active groups
 async function sendToAllGroups(prompt) {
+  // Send to Telegram groups
   for (const chatId of activeGroups) {
     try {
       addMessage(chatId, 'user', prompt);
@@ -213,8 +287,29 @@ async function sendToAllGroups(prompt) {
       await bot.telegram.sendMessage(chatId, reply, { parse_mode: 'Markdown' }).catch(() =>
         bot.telegram.sendMessage(chatId, reply)
       );
+      // Also broadcast to web app
+      addBroadcast(reply);
     } catch (err) {
       console.error(`Proactive message failed for chat ${chatId}:`, err.message);
+    }
+  }
+  // If no active groups, still generate broadcast for web app users
+  if (activeGroups.size === 0) {
+    try {
+      const tempHistory = [{ role: 'user', content: prompt }];
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: TRIP_CONTEXT,
+        messages: tempHistory,
+      });
+      let reply = '';
+      for (const block of response.content) {
+        if (block.type === 'text') reply += block.text;
+      }
+      addBroadcast(reply);
+    } catch (err) {
+      console.error('Broadcast-only message failed:', err.message);
     }
   }
 }
