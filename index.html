@@ -963,6 +963,12 @@ function checkWebProximity(){
     playAlertSound();
     // Show toast notification
     showProximityToast(poi.name,dist);
+    // Send Pushover notification via server
+    fetch(API_BASE+'/api/alert',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({poiName:poi.name,distance:dist,desc:poi.desc||'',sessionId})
+    }).catch(()=>{});
     break;// one at a time
   }
 }

@@ -12,6 +12,38 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// ===== PUSHOVER NOTIFICATIONS =====
+const PUSHOVER_APP_TOKEN = 'adnxddgcogxfhuna1ypzhnueb4pe9o';
+// User keys — add more users here
+const pushoverUsers = new Map();
+pushoverUsers.set('eran', 'uid2drphnhyiti8fnni3ieox6eav9m');
+
+async function sendPushover(userKey, title, message, url) {
+  try {
+    const body = new URLSearchParams({
+      token: PUSHOVER_APP_TOKEN,
+      user: userKey,
+      title: title || 'WanderGuide',
+      message,
+      sound: 'pushover',
+      priority: '0'
+    });
+    if (url) body.append('url', url);
+    await fetch('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      body
+    });
+  } catch (err) {
+    console.error('Pushover error:', err.message);
+  }
+}
+
+function sendPushoverToAll(title, message, url) {
+  for (const [name, key] of pushoverUsers) {
+    sendPushover(key, title, message, url);
+  }
+}
+
 // ===== EXPRESS HTTP SERVER (for web app) =====
 const app = express();
 app.use(cors());
@@ -122,6 +154,29 @@ app.get('/api/broadcasts', (req, res) => {
   res.json(msgs);
 });
 
+// Proximity alert endpoint — web app calls this to trigger Pushover notifications
+app.post('/api/alert', (req, res) => {
+  const { poiName, distance, desc, sessionId } = req.body;
+  if (!poiName) return res.status(400).json({ error: 'poiName required' });
+  const message = `📍 You're ${distance || '?'}m from ${poiName}!${desc ? '\n' + desc : ''}`;
+  const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(poiName)}+South+Korea`;
+  sendPushoverToAll('WanderGuide', message, mapsUrl);
+  res.json({ success: true });
+});
+
+// Register Pushover user endpoint
+app.post('/api/pushover/register', (req, res) => {
+  const { name, userKey } = req.body;
+  if (!name || !userKey) return res.status(400).json({ error: 'name and userKey required' });
+  pushoverUsers.set(name.toLowerCase(), userKey);
+  res.json({ success: true, users: Array.from(pushoverUsers.keys()) });
+});
+
+// List Pushover users
+app.get('/api/pushover/users', (req, res) => {
+  res.json(Array.from(pushoverUsers.entries()).map(([name]) => name));
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', pois: require('./poi-database').getAllPois().length, sessions: webSessions.size });
@@ -194,6 +249,8 @@ async function checkProximityAlerts(chatId, lat, lng) {
         parse_mode: 'Markdown',
         disable_notification: false
       }).catch(() => bot.telegram.sendMessage(chatId, msg.replace(/[*_\[\]()]/g, '')));
+      // Also send Pushover
+      sendPushoverToAll('WanderGuide', `You're ${poi.distance}m from ${poi.name}!\n${poi.desc}`, `https://www.google.com/maps/search/${encodeURIComponent(poi.name)}+South+Korea`);
     } catch (err) {
       console.error('Proximity alert error:', err.message);
     }
