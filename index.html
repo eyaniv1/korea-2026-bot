@@ -758,9 +758,31 @@ function formatReply(reply){
     .replace(/\n/g,'<br>');
 }
 
+function loadChatMessages(){
+  try{return JSON.parse(localStorage.getItem('chat_messages'))||[]}catch(e){return[]}
+}
+function saveChatMessages(arr){
+  if(arr.length>100)arr.splice(0,arr.length-100);
+  localStorage.setItem('chat_messages',JSON.stringify(arr));
+}
 function addChatMsg(role,html){
   const msgs=document.getElementById('chat-messages');
   msgs.innerHTML+=`<div class="chat-msg ${role}"><div class="bubble">${html}</div></div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  // Persist
+  const stored=loadChatMessages();
+  stored.push({role,html});
+  saveChatMessages(stored);
+}
+function restoreChatMessages(){
+  const stored=loadChatMessages();
+  if(stored.length===0)return;
+  const msgs=document.getElementById('chat-messages');
+  // Clear default welcome message if we have history
+  msgs.innerHTML='';
+  for(const m of stored){
+    msgs.innerHTML+=`<div class="chat-msg ${m.role}"><div class="bubble">${m.html}</div></div>`;
+  }
   msgs.scrollTop=msgs.scrollHeight;
 }
 
@@ -831,8 +853,13 @@ async function sendChat(){
     }else addChatMsg('bot','📍 Polling interval must be between 5 and 120 seconds.');
     return;
   }
+  if(lower==='clear chat'||lower==='reset chat'){
+    localStorage.removeItem('chat_messages');
+    document.getElementById('chat-messages').innerHTML='<div class="chat-msg bot"><div class="bubble">Chat cleared. How can I help?</div></div>';
+    return;
+  }
   if(lower==='help'||lower==='commands'||lower==='/help'){
-    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br>• <b>poll 10</b> — GPS check interval in seconds (5-120, default 20)<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips`);
+    addChatMsg('bot',`<b>💬 Chat Commands:</b><br><br><b>WanderGuide:</b><br>• <b>alerts on/off</b> — enable/disable proximity alerts<br>• <b>radius 500</b> — set alert distance (50-5000m)<br>• <b>cooldown 10</b> — minutes between alerts (1-120)<br>• <b>realert 2</b> — hours before same POI alerts again (0.5-24)<br>• <b>wanderguide status</b> — show settings, GPS, POI count<br>• <b>clear alerts</b> — reset alert history<br>• <b>poll 10</b> — GPS check interval in seconds (5-120, default 20)<br><br><b>POIs:</b><br>• <b>"add POI here: description"</b> — add POI at your location<br>• <b>"add POI at 37.5, 126.9: description"</b> — add POI at coordinates<br>• <b>"clear my POIs"</b> — remove all custom POIs<br><br><b>Anything else:</b><br>• Just ask naturally — itinerary, directions, restaurants, translations, tips<br><br><b>Other:</b><br>• <b>clear chat</b> — wipe visible chat history`);
     return;
   }
 
@@ -991,6 +1018,7 @@ async function pollBroadcasts(){
 document.addEventListener('DOMContentLoaded',()=>{
   // Enable audio context on first user interaction (iOS requirement)
   document.addEventListener('click',()=>{if(alertAudioCtx&&alertAudioCtx.state==='suspended')alertAudioCtx.resume()},{once:true});
+  restoreChatMessages();
   startGPS();
   fetchPois();
   // Re-fetch POIs every 5 min (picks up newly added POIs)
