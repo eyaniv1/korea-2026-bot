@@ -932,7 +932,6 @@ async function sendChat(){
     addChatMsg('bot',`📍 <b>WanderGuide Status</b><br>• Browser GPS: ${gps}<br>• POIs loaded: ${poiDatabase.length}<br>• Alerts: managed via Telegram DM (/alerts, /radius, /cooldown)<br>• Pushover: register here or via Telegram /register`);
     return;
   }
-  }
   if(lower==='clear alerts'||lower==='reset alerts'){
     localStorage.removeItem('wander_alerts');
     addChatMsg('bot','📍 Alert history cleared. All POIs will alert again.');
