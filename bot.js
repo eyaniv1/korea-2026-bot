@@ -206,14 +206,11 @@ app.get('/api/broadcasts', (req, res) => {
   res.json(msgs);
 });
 
-// Proximity alert endpoint — web app calls this to trigger Pushover notifications
-app.post('/api/alert', (req, res) => {
-  const { poiName, distance, desc, lat, lng, sessionId } = req.body;
-  if (!poiName) return res.status(400).json({ error: 'poiName required' });
-  const message = `📍 You're ${distance || '?'}m from ${poiName}!${desc ? '\n' + desc : ''}`;
-  const mapsUrl = lat && lng ? `https://www.google.com/maps/@${lat},${lng},17z` : `https://www.google.com/maps/search/${encodeURIComponent(poiName)}`;
-  sendPushoverToAll('WanderGuide', message, mapsUrl);
-  res.json({ success: true });
+// Alert queue endpoint — web app polls this for proximity alerts
+app.get('/api/alerts', (req, res) => {
+  const since = parseInt(req.query.since) || 0;
+  const alerts = alertQueue.filter(a => a.time > since);
+  res.json(alerts);
 });
 
 // Register Pushover user endpoint
@@ -251,63 +248,78 @@ const MAX_HISTORY = 50;
 // Track active group chat IDs so we can send proactive messages
 const activeGroups = new Set();
 
-// Store last known location per chat
+// Store last known location per chat (for general use)
 const lastLocations = new Map();
 
-// ===== WANDERGUIDE — Proximity Alert System =====
-let alertRadius = 300; // meters
-let alertCooldown = 20 * 60 * 1000; // 20 min between alerts
-let alertRevisitCooldown = 4 * 60 * 60 * 1000; // 4 hrs before re-alerting same POI
-const alertedPois = new Map(); // key: `chatId:poiName` → timestamp
-const proximityEnabled = new Map(); // chatId → boolean
+// ===== WANDERGUIDE — Per-User Proximity Alert System =====
+let alertRadius = 300;
+let alertCooldown = 20 * 60 * 1000;
+let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 
-function shouldAlertPoi(chatId, poiName) {
-  const key = `${chatId}:${poiName}`;
-  const lastAlerted = alertedPois.get(key);
-  if (lastAlerted && (Date.now() - lastAlerted) < alertRevisitCooldown) return false;
-  return true;
+// Per-user tracking: telegramUserId → { pushoverKey, lat, lng, name, enabled, alertHistory:{poiName→timestamp} }
+const wanderUsers = new Map();
+// Alert queue for web app display (global — all users see all alerts)
+const alertQueue = [];
+
+function getWanderUser(userId) {
+  if (!wanderUsers.has(userId)) {
+    wanderUsers.set(userId, { pushoverKey: null, lat: null, lng: null, name: '', enabled: false, alertHistory: {} });
+  }
+  return wanderUsers.get(userId);
 }
 
-function getLastAlertTime(chatId) {
+function getLastAlertTimeForUser(user) {
   let latest = 0;
-  for (const [key, time] of alertedPois) {
-    if (key.startsWith(`${chatId}:`) && time > latest) latest = time;
+  for (const time of Object.values(user.alertHistory)) {
+    if (time > latest) latest = time;
   }
   return latest;
 }
 
-async function checkProximityAlerts(chatId, lat, lng) {
-  if (!proximityEnabled.get(chatId)) return;
+async function checkUserProximity(userId) {
+  const user = getWanderUser(userId);
+  if (!user.enabled || !user.lat || !user.lng) return;
 
-  // Cooldown — don't spam
-  const timeSinceLastAlert = Date.now() - getLastAlertTime(chatId);
+  const now = Date.now();
+  const timeSinceLastAlert = now - getLastAlertTimeForUser(user);
   if (timeSinceLastAlert < alertCooldown) return;
 
-  const nearby = findNearbyPois(lat, lng, alertRadius);
+  const nearby = findNearbyPois(user.lat, user.lng, alertRadius);
   if (nearby.length === 0) return;
 
-  // Find the closest POI we haven't alerted about recently
   for (const poi of nearby) {
-    if (!shouldAlertPoi(chatId, poi.name)) continue;
+    const lastAlerted = user.alertHistory[poi.name] || 0;
+    if (lastAlerted && (now - lastAlerted) < alertRevisitCooldown) continue;
 
     // Mark as alerted
-    alertedPois.set(`${chatId}:${poi.name}`, Date.now());
+    user.alertHistory[poi.name] = now;
 
-    // Send friendly alert
-    const msg = `📍 *Hey! You're ${poi.distance}m from ${poi.name}!*\n\n${poi.desc}\n\n🗺️ [Open in Maps](https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lng})`;
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
+    const mapsUrl = `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`;
+    const alertText = `📍 ${user.name}, you're ${poi.distance}m from ${poi.name}! ${poi.desc || ''}`;
 
-    try {
-      await bot.telegram.sendMessage(chatId, msg, {
-        parse_mode: 'Markdown',
-        disable_notification: false
-      }).catch(() => bot.telegram.sendMessage(chatId, msg.replace(/[*_\[\]()]/g, '')));
-      // Also send Pushover
-      sendPushoverToAll('WanderGuide', `You're ${poi.distance}m from ${poi.name}!\n${poi.desc}`, `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`);
-    } catch (err) {
-      console.error('Proximity alert error:', err.message);
+    // 1. Send Pushover to this specific user
+    if (user.pushoverKey) {
+      sendPushover(user.pushoverKey, 'WanderGuide', alertText, mapsUrl);
     }
 
-    // Only one alert at a time
+    // 2. Send Telegram DM to this user
+    try {
+      const msg = `📍 *Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!*\n\n${poi.desc}\n\n🗺️ [Open in Maps](${mapsUrl})`;
+      await bot.telegram.sendMessage(userId, msg, { parse_mode: 'Markdown' })
+        .catch(() => bot.telegram.sendMessage(userId, msg.replace(/[*_\[\]()]/g, '')));
+    } catch (err) {
+      console.error(`Telegram alert error for ${user.name}:`, err.message);
+    }
+
+    // 3. Add to alert queue for web app display
+    alertQueue.push({
+      text: `📍 <b>${user.name} is ${poi.distance}m from ${poi.name}!</b> <span style="color:#888;font-size:12px">${timeStr}</span><br>${poi.desc || ''}<br><a href="${mapsUrl}" target="_blank">🗺️ Open in Maps</a>`,
+      time: now
+    });
+    if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
+
+    // Only one alert at a time per user
     break;
   }
 }
@@ -596,46 +608,61 @@ bot.on('voice', async (ctx) => {
 bot.on('location', async (ctx) => {
   trackGroup(ctx);
   const chatId = ctx.chat.id;
+  const userId = ctx.from.id;
   const userName = ctx.from.first_name || 'Someone';
   const { latitude, longitude } = ctx.message.location;
   const isLive = !!ctx.message.location.live_period;
 
+  // Update general location store
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Check proximity alerts
-  await checkProximityAlerts(chatId, latitude, longitude);
+  // Update per-user WanderGuide location
+  const wu = getWanderUser(userId);
+  wu.lat = latitude;
+  wu.lng = longitude;
+  wu.name = userName;
 
-  // Only respond conversationally for one-time location shares, not live updates
-  if (!isLive) {
+  // Check per-user proximity alerts
+  await checkUserProximity(userId);
+
+  // Only respond conversationally for one-time location shares in non-DM chats
+  if (!isLive && ctx.chat.type !== 'private') {
     addMessage(chatId, 'user',
       `${userName} shared their location: latitude ${latitude}, longitude ${longitude}. ` +
-      `Acknowledge briefly that you know where they are. If there was a recent question about nearby places, answer it using this location.`
+      `Acknowledge briefly that you know where they are.`
     );
-
     try {
       await ctx.sendChatAction('typing');
       const reply = await askClaude(chatId, getHistory(chatId));
       addMessage(chatId, 'assistant', reply);
-      await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() =>
-        ctx.reply(reply)
-      );
+      await ctx.reply(reply, { parse_mode: 'Markdown' }).catch(() => ctx.reply(reply));
     } catch (err) {
       console.error('Location error:', err.message);
     }
+  } else if (!isLive && ctx.chat.type === 'private') {
+    // In DM, just acknowledge briefly
+    await ctx.reply(`📍 Got your location, ${userName}. WanderGuide is ${wu.enabled ? 'active — I\'ll alert you when you\'re near interesting places.' : 'off. Send /alerts on to enable.'}`);
   }
 });
 
 // Handle edited messages (live location updates come as edits)
 bot.on('edited_message', async (ctx) => {
   if (!ctx.editedMessage?.location) return;
-  const chatId = ctx.editedMessage.chat.id;
+  const userId = ctx.editedMessage.from.id;
   const userName = ctx.editedMessage.from.first_name || 'Someone';
   const { latitude, longitude } = ctx.editedMessage.location;
+  const chatId = ctx.editedMessage.chat.id;
 
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Check proximity alerts on every live location update
-  await checkProximityAlerts(chatId, latitude, longitude);
+  // Update per-user location
+  const wu = getWanderUser(userId);
+  wu.lat = latitude;
+  wu.lng = longitude;
+  wu.name = userName;
+
+  // Check per-user proximity
+  await checkUserProximity(userId);
 });
 
 // ===== ADMIN COMMANDS =====
@@ -720,21 +747,36 @@ bot.command('deltip', (ctx) => {
 
 // ===== WANDERGUIDE COMMANDS =====
 
-// /alerts on|off — toggle proximity alerts
+// /alerts on|off — toggle proximity alerts (per user)
 bot.command('alerts', (ctx) => {
   trackGroup(ctx);
-  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change bot settings.');
-  const chatId = ctx.chat.id;
+  const userId = ctx.from.id;
+  const wu = getWanderUser(userId);
+  wu.name = ctx.from.first_name || 'Someone';
   const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
   if (arg === 'off') {
-    proximityEnabled.set(chatId, false);
-    ctx.reply('📍 Proximity alerts disabled.');
+    wu.enabled = false;
+    ctx.reply(`📍 WanderGuide disabled for ${wu.name}.`);
   } else if (arg === 'on') {
-    proximityEnabled.set(chatId, true);
-    ctx.reply('📍 Proximity alerts enabled! Share your live location to start receiving alerts when you\'re near interesting places.');
+    wu.enabled = true;
+    ctx.reply(`📍 WanderGuide enabled for ${wu.name}! Share your live location in this DM to start receiving alerts.${wu.pushoverKey ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
   } else {
-    ctx.reply(`Proximity alerts: ${proximityEnabled.get(chatId) ? '📍 ON' : '⭕ OFF'}\nUsage: /alerts on or /alerts off\n\nWhen ON, share live location and I'll alert you when you're within ${alertRadius}m of interesting places.`);
+    ctx.reply(`📍 WanderGuide for ${wu.name}: ${wu.enabled ? 'ON' : 'OFF'}\nPushover: ${wu.pushoverKey ? 'registered' : 'not set'}\nLocation: ${wu.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
   }
+});
+
+// /register <pushover_key> — link Pushover to this Telegram user
+bot.command('register', (ctx) => {
+  trackGroup(ctx);
+  const userId = ctx.from.id;
+  const wu = getWanderUser(userId);
+  wu.name = ctx.from.first_name || 'Someone';
+  const key = ctx.message.text.replace('/register', '').trim();
+  if (!key) return ctx.reply('Usage: /register YOUR_PUSHOVER_USER_KEY\n\nGet your key from the Pushover app.');
+  wu.pushoverKey = key;
+  // Also add to the pushoverUsers map for web app registration
+  pushoverUsers.set(wu.name.toLowerCase(), key);
+  ctx.reply(`✅ Pushover registered for ${wu.name}! You'll receive native push notifications for proximity alerts.`);
 });
 
 // /radius <meters> — change alert radius
