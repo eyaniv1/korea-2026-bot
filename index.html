@@ -822,6 +822,7 @@ function toggleChat(){
   chatOpen=!chatOpen;
   document.getElementById('chat-panel').classList.toggle('open',chatOpen);
   document.getElementById('chat-fab').style.display=chatOpen?'none':'flex';
+  document.querySelector('.bottom-nav').style.display=chatOpen?'none':'flex';
   if(chatOpen){
     const msgs=document.getElementById('chat-messages');
     setTimeout(()=>{msgs.scrollTop=msgs.scrollHeight},50);
