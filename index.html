@@ -598,19 +598,64 @@ function build(){
   infoPage.className='page';
   infoPage.innerHTML=`<div class="missing-page">
 
-    <h2>🔔 Push Notifications Setup</h2>
+    <h2>🗺️ WanderGuide — Location Alerts Setup</h2>
 
     <div class="m-item">
-      <div class="m-title">Get alerts when you're near interesting places</div>
+      <div class="m-title">How it works</div>
       <div class="m-desc">
-        The app detects your location and alerts you when you're near a point of interest. To receive <b>native push notifications</b> (buzz + sound + Siri readout through AirPods, even when phone is locked), follow these steps:<br><br>
-        <b>Step 1:</b> Download <b>Pushover</b> from the App Store (free 30-day trial, then $5 one-time)<br><br>
-        <b>Step 2:</b> Open Pushover, create an account. Your <b>User Key</b> is shown on the main screen.<br><br>
-        <b>Step 3:</b> Open the 💬 chat in this app and type:<br>
+        WanderGuide tracks your location and alerts you when you're near interesting places — temples, markets, restaurants, viewpoints, and hidden gems. You get a buzz on your phone/watch, Siri reads the alert through AirPods, and the alert appears in this app's chat. It works even when your phone is locked and in your pocket.<br><br>
+        <b>Three apps are needed:</b> Telegram (location tracking), Pushover (push notifications), and this web app (itinerary + chat). Setup takes 5 minutes per person.
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">Step 1: Telegram — Location Tracking</div>
+      <div class="m-desc">
+        Telegram runs in the background on iOS and shares your GPS with the bot — this is what makes alerts work when your phone is locked.<br><br>
+        <b>1.</b> Download <b>Telegram</b> from the App Store (free)<br><br>
+        <b>2.</b> Open Telegram, sign up with your phone number<br><br>
+        <b>3.</b> Search for the bot: <b>@Kokorea_2026_bot</b><br><br>
+        <b>4.</b> Start a <b>private chat</b> (DM) with the bot — tap Start<br><br>
+        <b>5.</b> Send: <code style="background:#1e1e4a;padding:4px 8px;border-radius:4px;color:#5dade2">/alerts on</code><br><br>
+        <b>6.</b> Share your live location: tap 📎 → Location → <b>Share Live Location</b> → choose <b>8 hours</b><br><br>
+        <b>7.</b> Done! Minimize Telegram — it runs in the background. Re-share location every 8 hours (or when prompted).<br><br>
+        <b>Note:</b> You only use Telegram for location sharing. Everything else (itinerary, chat, vouchers) is in this web app.
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">Step 2: Pushover — Native Notifications</div>
+      <div class="m-desc">
+        Pushover delivers native push notifications with buzz + sound, even when your phone is locked.<br><br>
+        <b>1.</b> Download <b>Pushover</b> from the App Store (free 30-day trial, then $5 one-time)<br><br>
+        <b>2.</b> Open Pushover, create an account. Your <b>User Key</b> is shown on the main screen. Copy it.<br><br>
+        <b>3.</b> Go back to Telegram → your DM with the bot → send:<br>
+        <code style="background:#1e1e4a;padding:4px 8px;border-radius:4px;color:#5dade2">/register YOUR_USER_KEY</code><br><br>
+        <b>OR</b> open the 💬 chat in this app and type:<br>
         <code style="background:#1e1e4a;padding:4px 8px;border-radius:4px;color:#2ecc71">register pushover YOUR_USER_KEY</code><br><br>
-        <b>Step 4:</b> Done! You'll now receive push notifications when near a POI.<br><br>
-        <b>Optional — Siri readout:</b> Go to iPhone Settings → Notifications → Pushover → Announce Notifications → ON. With AirPods in and phone locked, Siri will read alerts aloud.<br><br>
-        <b>Everyone in the group</b> should do this — each person gets their own alerts on their own phone.
+        <b>4.</b> Done! You'll now receive push notifications when near a POI.
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">Step 3 (Optional): Siri Audio Readout</div>
+      <div class="m-desc">
+        With AirPods in and phone locked, Siri can read alerts aloud — no need to take your phone out.<br><br>
+        <b>1.</b> iPhone Settings → Notifications → Pushover → <b>Announce Notifications → ON</b><br><br>
+        <b>2.</b> Connect AirPods, lock phone, put it in your pocket<br><br>
+        <b>3.</b> When near a POI, Siri reads: "Hey Eran, you're 50 meters from Jogyesa Temple — the lotus lanterns are stunning right now"
+      </div>
+    </div>
+
+    <div class="m-item">
+      <div class="m-title">Summary per person</div>
+      <div class="m-desc">
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Telegram</td><td style="padding:6px">DM bot → /alerts on → share live location</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Pushover</td><td style="padding:6px">Install → copy user key → /register in Telegram or web chat</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Siri (optional)</td><td style="padding:6px">Settings → Notifications → Pushover → Announce ON</td></tr>
+          <tr><td style="padding:6px;color:#888">Daily</td><td style="padding:6px">Re-share live location every 8 hours in Telegram</td></tr>
+        </table>
       </div>
     </div>
 
