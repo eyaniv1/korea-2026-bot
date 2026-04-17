@@ -103,7 +103,45 @@ app.post('/api/chat', async (req, res) => {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: TRIP_CONTEXT + '\n\nYou are chatting via the trip companion web app. Keep answers short and mobile-friendly. Use bullet points for lists.\n\nIf the user asks to add a POI, extract the coordinates and description and respond with a JSON block like: {"addPoi":{"lat":37.5,"lng":126.9,"name":"Place name","desc":"Description"}} followed by a confirmation message.\n\nIf the user asks to remove/clear their POIs, respond with {"clearPois":true} followed by a confirmation.',
+      system: TRIP_CONTEXT + `\n\nYou are chatting via the trip companion web app. Keep answers short and mobile-friendly. Use bullet points for lists.
+
+If the user asks to add a POI, extract the coordinates and description and respond with a JSON block like: {"addPoi":{"lat":37.5,"lng":126.9,"name":"Place name","desc":"Description"}} followed by a confirmation message.
+
+If the user asks to remove/clear their POIs, respond with {"clearPois":true} followed by a confirmation.
+
+## Vouchers & Confirmations
+When the user asks for a voucher, confirmation, or ticket, provide the link from this list. The base URL is https://eyaniv1.github.io/korea-2026-bot/
+
+**Hotels:**
+- Seoul 23-26 Apr (Eran/Michal): vouchers/hotels/Hotel%20Seoul%2023-26%20APR%20Eran%20Michal%20Confirmation.pdf
+- Seoul 22-26 Apr (Jonathan/Ofir): vouchers/hotels/Hotel%20Seoul%2022-26%20APR%20Jonathan%20Ofir%20Confirmation.pdf
+- Jeju 26-29 Apr: vouchers/hotels/Hotel%20Jeju%2026-29%20APR%20Confirmation.pdf
+- Busan 29 Apr-1 May: vouchers/hotels/Hotel%20Busan%2029%20APR%20-%201%20May%20Confirmation.pdf
+- Seoul 1-4 May: vouchers/hotels/Hotel%20Seoul%201-4%20May%20Confirmation.pdf
+
+**Flights:**
+- Eran/Michal international: vouchers/flights/TLV%20Seoul%20TLV%20Eran%20Michal.pdf
+- Jonathan international: vouchers/flights/Katmandu%20Seoul%20JONATHAN%20YANIV%2021APR2026.pdf
+- Ofir international: vouchers/flights/Danang%20Seoul%20Ofir%20Tovel%2020APR2026.pdf
+- Internal flights overview: vouchers/flights/Internal%20flights%20-%20My%20Trips%20_%20Korean%20Air.pdf
+- E-tickets: vouchers/flights/Eran%20Korean%20Air%20%20e-Ticket.pdf, vouchers/flights/Michal%20Korean%20Air%20e-Ticket.pdf, vouchers/flights/Jonathan%20Korean%20Air%20e-Ticket.pdf, vouchers/flights/Ofir%20Korean%20Air%20%20e-Ticket.pdf
+
+**Car Rental:**
+- Alamo Jeju 26-29 Apr: vouchers/car-rental/Car%20rental%20Alamo%20Jeju%2026-29%20APR.pdf
+
+**Train:**
+- KTX Busan-Seoul: vouchers/train/Korean%20Train%20Busan%20Seoul%20Confirmation.pdf
+
+**Attractions:**
+- DMZ tour 3 May: vouchers/Attractions/Klook%20voucher%20DMZ%20tour%203%20May.pdf
+- E-bikes Seoul 25 Apr: vouchers/Attractions/ebikes%20along%20river%20in%20Seoul%2025%20Apr%20Millim.pdf
+- N Seoul Tower cable car 25 Apr: vouchers/Attractions/Klook%20voucher%20Seoul%20Cable%20car%20observatory%2025%20Apr.pdf
+
+**Taxis/Drivers:**
+- Jonathan airport taxi: vouchers/Taxis/Jonathan%2C%20your%20journey%20from%20Incheon%20International%20Airport%20(ICN).pdf
+- Busan-Gyeongju driver 30 Apr: vouchers/Taxis/Klook%20voucher%20Car%20Hire%20Busan%2030%20Apr.pdf
+
+When providing a voucher link, format it as: [📎 Description](https://eyaniv1.github.io/korea-2026-bot/PATH)`,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
       messages: cleaned,
     });
@@ -170,10 +208,10 @@ app.get('/api/broadcasts', (req, res) => {
 
 // Proximity alert endpoint — web app calls this to trigger Pushover notifications
 app.post('/api/alert', (req, res) => {
-  const { poiName, distance, desc, sessionId } = req.body;
+  const { poiName, distance, desc, lat, lng, sessionId } = req.body;
   if (!poiName) return res.status(400).json({ error: 'poiName required' });
   const message = `📍 You're ${distance || '?'}m from ${poiName}!${desc ? '\n' + desc : ''}`;
-  const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(poiName)}+South+Korea`;
+  const mapsUrl = lat && lng ? `https://www.google.com/maps/@${lat},${lng},17z` : `https://www.google.com/maps/search/${encodeURIComponent(poiName)}`;
   sendPushoverToAll('WanderGuide', message, mapsUrl);
   res.json({ success: true });
 });
@@ -264,7 +302,7 @@ async function checkProximityAlerts(chatId, lat, lng) {
         disable_notification: false
       }).catch(() => bot.telegram.sendMessage(chatId, msg.replace(/[*_\[\]()]/g, '')));
       // Also send Pushover
-      sendPushoverToAll('WanderGuide', `You're ${poi.distance}m from ${poi.name}!\n${poi.desc}`, `https://www.google.com/maps/search/${encodeURIComponent(poi.name)}+South+Korea`);
+      sendPushoverToAll('WanderGuide', `You're ${poi.distance}m from ${poi.name}!\n${poi.desc}`, `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`);
     } catch (err) {
       console.error('Proximity alert error:', err.message);
     }
