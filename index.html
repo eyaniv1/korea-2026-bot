@@ -900,6 +900,9 @@ async function sendChat(){
   if(!msg&&!pendingImage)return;
   input.value='';
 
+  // Show user's message immediately
+  addChatMsg('user',msg.replace(/</g,'&lt;'));
+
   // Handle local WanderGuide commands (before image processing)
   const lower=msg.toLowerCase().trim();
   if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'||lower==='alerts off'||lower==='turn alerts off'||lower==='disable alerts'){
@@ -1045,8 +1048,10 @@ async function sendChat(){
   pendingImage=null;
   clearChatImage();
 
-  const userHtml=(imageData?`<img src="data:${imageData.mediaType};base64,${imageData.data}"><br>`:'')+(msg?msg.replace(/</g,'&lt;'):'📷 Photo');
-  addChatMsg('user',userHtml);
+  // Show image if attached (text already shown above)
+  if(imageData){
+    addChatMsg('user',`<img src="data:${imageData.mediaType};base64,${imageData.data}">${msg?'':'📷 Photo'}`);
+  }
 
   // If user mentions "here" or "my location", append GPS if available
   let enrichedMsg=msg;
