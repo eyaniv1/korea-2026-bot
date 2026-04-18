@@ -42,11 +42,16 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - Dinner: Maple Tree House (Itaewon) — Korean BBQ. Call +82 2-790-7977
 - **Hotel:** Amid Hotel Seoul
 
-### 25/4 (Sat) — E-Bike + Market + Tower
-- 11:00 AM: E-bike Han River — Yeouido to Banpo Bridge loop (20 km, ~1.5 hrs, flat). Millim rental, booked.
-- Lunch: Riverside cafes at Yeouido
-- 2:00 PM: Namdaemun Market — walk at your own pace, flexible timing
+### 25/4 (Sat) — Suwon Fortress + Tower + Jungsik
+- 8:30 AM: Train to Suwon (~30 min from Seoul Station)
+- 9:00 AM: Hwaseong Fortress wall walk (5.7 km, UNESCO, easy)
+- 10:30 AM: Haenggung Palace — martial arts + guard performances (weekends)
+- 11:00 AM: Haenggung Street — busking, crafts, galleries, street food
+- 12:00 PM: Lunch at Suwon Chicken Street (famous Korean fried chicken)
+- 1:00 PM: Train back to Seoul
+- 2:00 PM: Namdaemun Market — walk at your own pace
 - 5:30 PM: N Seoul Tower — cable car up, sunset at ~7:10 PM. Klook tickets booked.
+- 7:15 PM: Optional — Starfield Library COEX (iconic bookshelves, free, 20-30 min, in Gangnam near Jungsik)
 - 8:00 PM: Jungsik — Michelin 2-star modern Korean (tasting menu ~230,000 won/person)
 - **Hotel:** Amid Hotel Seoul
 
