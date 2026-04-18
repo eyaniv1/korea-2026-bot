@@ -1173,7 +1173,7 @@ async function start() {
     await loadCustomPois();
     await loadUsers();
   } catch (err) {
-    console.error('DB init error (continuing without persistence):', err.message);
+    console.error('DB init error (continuing without persistence):', err.message, err.stack);
   }
   bot.launch();
   console.log('🤖 Korea Trip Bot is running! (with web search + scheduled messages + PostgreSQL persistence)');

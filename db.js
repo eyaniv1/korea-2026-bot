@@ -1,8 +1,11 @@
 const { Pool } = require('pg');
 
+const dbUrl = process.env.DATABASE_URL;
+console.log('DB URL configured:', dbUrl ? `${dbUrl.substring(0, 30)}...` : 'NOT SET');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('railway.internal') ? false : { rejectUnauthorized: false }
+  connectionString: dbUrl,
+  ssl: dbUrl?.includes('railway.internal') ? false : { rejectUnauthorized: false }
 });
 
 // Initialize tables
