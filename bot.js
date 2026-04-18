@@ -382,7 +382,11 @@ let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 // Alert queue for web app display
 const alertQueue = [];
 
+const proximityLock = new Set(); // prevent concurrent checks for same user
 async function checkUserProximity(userName) {
+  if (proximityLock.has(userName)) return;
+  proximityLock.add(userName);
+  try {
   const user = getUser(userName);
   if (!user || !user.enabled || !user.lat || !user.lng) return;
 
@@ -429,6 +433,7 @@ async function checkUserProximity(userName) {
     // Only one alert at a time per user
     break;
   }
+  } finally { proximityLock.delete(userName); }
 }
 
 // Admin config — Eran's Telegram user ID (set on first /admin command)
