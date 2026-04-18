@@ -296,14 +296,14 @@ async function checkUserProximity(userId) {
 
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
     const mapsUrl = `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`;
-    const alertText = `📍 ${user.name}, you're ${poi.distance}m from ${poi.name}! ${poi.desc || ''}`;
 
-    // 1. Send Pushover to this specific user
+    // 1. Send Pushover — SHORT message for Siri readout (name + distance only)
     if (user.pushoverKey) {
-      sendPushover(user.pushoverKey, 'WanderGuide', alertText, mapsUrl);
+      const pushMsg = `Hey ${user.name}, you're ${poi.distance} meters from ${poi.name}.`;
+      sendPushover(user.pushoverKey, 'WanderGuide', pushMsg, mapsUrl);
     }
 
-    // 2. Send Telegram DM to this user
+    // 2. Send Telegram DM — FULL message with description + maps link
     try {
       const msg = `📍 *Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!*\n\n${poi.desc}\n\n🗺️ [Open in Maps](${mapsUrl})`;
       await bot.telegram.sendMessage(userId, msg, { parse_mode: 'Markdown' })
@@ -813,7 +813,10 @@ bot.command('realert', (ctx) => {
 bot.command('nearby', async (ctx) => {
   trackGroup(ctx);
   const chatId = ctx.chat.id;
-  const loc = lastLocations.get(chatId);
+  const userId = ctx.from.id;
+  const wu = getWanderUser(userId);
+  // Try per-user location first, then fall back to chat location
+  const loc = (wu.lat ? { latitude: wu.lat, longitude: wu.lng } : lastLocations.get(chatId));
   if (!loc) return ctx.reply('📍 Share your location first (paperclip → Location), then try /nearby again.');
 
   const nearby = findNearbyPois(loc.latitude, loc.longitude, 1000); // 1km radius for manual check
@@ -854,14 +857,22 @@ bot.command('addpoi', (ctx) => {
 // /status — show current bot config
 bot.command('status', (ctx) => {
   trackGroup(ctx);
+  const userId = ctx.from.id;
+  const wu = getWanderUser(userId);
+  const wanderStatus = wu.enabled ? '📍 ON' : '⭕ OFF';
+  const locStatus = wu.lat ? `${wu.lat.toFixed(4)}, ${wu.lng.toFixed(4)}` : 'not shared';
+  const pushStatus = wu.pushoverKey ? 'registered' : 'not set';
   ctx.reply(
     `⚙️ *Bot Status*\n` +
     `• Response mode: ${settings.responseMode}\n` +
     `• Scheduled messages: ${settings.scheduleEnabled ? 'ON' : 'OFF'}\n` +
     `• Curated tips: ${settings.tips.length}\n` +
     `• Active groups: ${activeGroups.size}\n` +
-    `• WanderGuide: ${proximityEnabled.get(ctx.chat.id) ? '📍 ON' : '⭕ OFF'} (radius: ${alertRadius}m, cooldown: ${alertCooldown/60000}min, re-alert: ${alertRevisitCooldown/3600000}hrs)\n` +
-    `• POIs in database: ${require('./poi-database').getAllPois().length}`,
+    `• WanderGuide: ${wanderStatus} (radius: ${alertRadius}m, cooldown: ${alertCooldown/60000}min, re-alert: ${alertRevisitCooldown/3600000}hrs)\n` +
+    `• Your location: ${locStatus}\n` +
+    `• Pushover: ${pushStatus}\n` +
+    `• POIs in database: ${require('./poi-database').getAllPois().length}\n` +
+    `• WanderGuide users: ${wanderUsers.size}`,
     { parse_mode: 'Markdown' }
   );
 });
