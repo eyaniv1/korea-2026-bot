@@ -1,4 +1,4 @@
-require('dotenv').config({ override: false });
+if (require("fs").existsSync(".env")) require("dotenv").config();
 const { Telegraf } = require('telegraf');
 const Anthropic = require('@anthropic-ai/sdk');
 const Groq = require('groq-sdk');
