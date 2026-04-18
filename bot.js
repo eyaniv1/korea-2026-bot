@@ -207,6 +207,27 @@ app.get('/api/broadcasts', (req, res) => {
   res.json(msgs);
 });
 
+// Send push to specific user or broadcast
+app.post('/api/push', (req, res) => {
+  const { to, message } = req.body;
+  if (!message) return res.status(400).json({ error: 'message required' });
+
+  if (to === 'all' || !to) {
+    // Broadcast to all registered Pushover users
+    sendPushoverToAll('Trip Message', message);
+    // Also add to alert queue for web chat
+    alertQueue.push({ text: `📢 <b>Broadcast:</b> ${message}`, time: Date.now() });
+    if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
+    res.json({ success: true, sentTo: Array.from(pushoverUsers.keys()) });
+  } else {
+    // Send to specific user
+    const key = pushoverUsers.get(to.toLowerCase());
+    if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${Array.from(pushoverUsers.keys()).join(', ')}` });
+    sendPushover(key, 'Trip Message', message);
+    res.json({ success: true, sentTo: to });
+  }
+});
+
 // Alert queue endpoint — web app polls this for proximity alerts
 app.get('/api/alerts', (req, res) => {
   const since = parseInt(req.query.since) || 0;
@@ -216,10 +237,14 @@ app.get('/api/alerts', (req, res) => {
 
 // Register Pushover user endpoint
 app.post('/api/pushover/register', (req, res) => {
-  const { name, userKey } = req.body;
+  const { name, userKey, sendTest } = req.body;
   if (!name || !userKey) return res.status(400).json({ error: 'name and userKey required' });
-  pushoverUsers.set(name.toLowerCase(), userKey);
-  res.json({ success: true, users: Array.from(pushoverUsers.keys()) });
+  const registeredName = name.toLowerCase();
+  pushoverUsers.set(registeredName, userKey);
+  if (sendTest) {
+    sendPushover(userKey, 'WanderGuide', `Welcome ${name}! Push notifications are working. You'll be alerted when near interesting places.`);
+  }
+  res.json({ success: true, registeredName, users: Array.from(pushoverUsers.keys()) });
 });
 
 // List Pushover users
@@ -798,7 +823,8 @@ bot.command('register', (ctx) => {
   wu.pushoverKey = key;
   pushoverUsers.set(wu.name.toLowerCase(), key);
   upsertWanderUser(userId, { name: wu.name, pushoverKey: key });
-  ctx.reply(`✅ Pushover registered for ${wu.name}! You'll receive native push notifications for proximity alerts.`);
+  ctx.reply(`✅ Pushover registered for ${wu.name}! Sending a test notification now...`);
+  sendPushover(key, 'WanderGuide', `Welcome ${wu.name}! Push notifications are working. You'll be alerted when near interesting places.`);
 });
 
 // /radius <meters> — change alert radius
