@@ -862,21 +862,26 @@ bot.command('deltip', (ctx) => {
 // /alerts on|off — toggle proximity alerts (per user)
 bot.command('alerts', async (ctx) => {
   trackGroup(ctx);
-  const userId = ctx.from.id;
-  const userName = ctx.from.first_name || 'Someone';
-  let user = getUserByTelegramId(userId);
-  if (!user) user = await registerUser({ name: userName, telegramUserId: userId });
-  const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
-  if (arg === 'off') {
-    user.enabled = false;
-    registerUser({ name: user.name, enabled: false });
-    ctx.reply(`📍 WanderGuide disabled for ${user.name}.`);
-  } else if (arg === 'on') {
-    user.enabled = true;
-    registerUser({ name: user.name, enabled: true });
-    ctx.reply(`📍 WanderGuide enabled for ${user.name}! Share your live location in this DM to start receiving alerts.${user.pushover_key ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
-  } else {
-    ctx.reply(`📍 WanderGuide for ${user.name}: ${user.enabled ? 'ON' : 'OFF'}\nPushover: ${user.pushover_key ? 'registered' : 'not set'}\nLocation: ${user.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
+  try {
+    const userId = ctx.from.id;
+    const userName = ctx.from.first_name || 'Someone';
+    let user = getUserByTelegramId(userId);
+    if (!user) user = await registerUser({ name: userName, telegramUserId: userId });
+    const arg = ctx.message.text.replace(/@\S+/, '').replace('/alerts', '').trim().toLowerCase();
+    if (arg === 'off') {
+      user.enabled = false;
+      await registerUser({ name: user.name, enabled: false });
+      await ctx.reply(`📍 WanderGuide disabled for ${user.name}.`);
+    } else if (arg === 'on') {
+      user.enabled = true;
+      await registerUser({ name: user.name, enabled: true });
+      await ctx.reply(`📍 WanderGuide enabled for ${user.name}! Share your live location in this DM to start receiving alerts.${user.pushover_key ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
+    } else {
+      await ctx.reply(`📍 WanderGuide for ${user.name}: ${user.enabled ? 'ON' : 'OFF'}\nPushover: ${user.pushover_key ? 'registered' : 'not set'}\nLocation: ${user.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
+    }
+  } catch (err) {
+    console.error('Alerts command error:', err.message);
+    await ctx.reply('❌ Error processing command. Try again.');
   }
 });
 
