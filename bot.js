@@ -7,17 +7,54 @@ const express = require('express');
 const cors = require('cors');
 const { TRIP_CONTEXT } = require('./trip-context');
 const { findNearbyPois, addCustomPoi, clearCustomPois, getDistance, loadCustomPois } = require('./poi-database');
-const { initDB, getWanderUserDB, upsertWanderUser, updateWanderLocation, getLastAlertTime: dbGetLastAlertTime, getLastAlertTimeAny: dbGetLastAlertTimeAny, recordAlert, clearAlertHistory } = require('./db');
+const db = require('./db');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// ===== PUSHOVER NOTIFICATIONS =====
+// ===== UNIFIED USER SYSTEM =====
 const PUSHOVER_APP_TOKEN = 'adnxddgcogxfhuna1ypzhnueb4pe9o';
-// User keys — add more users here
-const pushoverUsers = new Map();
-pushoverUsers.set('eran', 'uid2drphnhyiti8fnni3ieox6eav9m');
+
+// In-memory cache of all users, keyed by lowercase name. Backed by PostgreSQL.
+const users = new Map();
+
+function getUser(name) {
+  return users.get(name.toLowerCase()) || null;
+}
+
+function getUserByTelegramId(telegramId) {
+  for (const u of users.values()) {
+    if (u.telegram_user_id === telegramId) return u;
+  }
+  return null;
+}
+
+function getAllUserNames() {
+  return Array.from(users.values()).map(u => u.name);
+}
+
+async function registerUser(data) {
+  // data: { name, pushoverKey, telegramUserId, webSessionId, enabled, lat, lng }
+  const row = await db.upsertUser(data);
+  users.set(row.name.toLowerCase(), row);
+  return row;
+}
+
+async function deleteUser(name) {
+  await db.pool.query('DELETE FROM users WHERE LOWER(name) = LOWER($1)', [name]);
+  users.delete(name.toLowerCase());
+}
+
+async function loadUsers() {
+  const rows = await db.getAllUsers();
+  for (const row of rows) {
+    users.set(row.name.toLowerCase(), row);
+  }
+  console.log(`👤 Loaded ${rows.length} users from database`);
+}
+
+// ===== PUSHOVER =====
 
 async function sendPushover(userKey, title, message, url) {
   try {
@@ -30,19 +67,21 @@ async function sendPushover(userKey, title, message, url) {
       priority: '0'
     });
     if (url) body.append('url', url);
-    await fetch('https://api.pushover.net/1/messages.json', {
-      method: 'POST',
-      body
-    });
+    await fetch('https://api.pushover.net/1/messages.json', { method: 'POST', body });
   } catch (err) {
     console.error('Pushover error:', err.message);
   }
 }
 
 function sendPushoverToAll(title, message, url) {
-  for (const [name, key] of pushoverUsers) {
-    sendPushover(key, title, message, url);
+  for (const u of users.values()) {
+    if (u.pushover_key) sendPushover(u.pushover_key, title, message, url);
   }
+}
+
+function sendPushoverToUser(name, title, message, url) {
+  const u = getUser(name);
+  if (u?.pushover_key) sendPushover(u.pushover_key, title, message, url);
 }
 
 // ===== EXPRESS HTTP SERVER (for web app) =====
@@ -218,11 +257,12 @@ app.post('/api/push', (req, res) => {
     // Also add to alert queue for web chat
     alertQueue.push({ text: `📢 <b>Broadcast:</b> ${message}`, time: Date.now() });
     if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
-    res.json({ success: true, sentTo: Array.from(pushoverUsers.keys()) });
+    res.json({ success: true, sentTo: getAllUserNames() });
   } else {
     // Send to specific user
-    const key = pushoverUsers.get(to.toLowerCase());
-    if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${Array.from(pushoverUsers.keys()).join(', ')}` });
+    const u = getUser(to);
+    const key = u?.pushover_key;
+    if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${getAllUserNames().join(', ')}` });
     sendPushover(key, 'Trip Message', message);
     res.json({ success: true, sentTo: to });
   }
@@ -235,54 +275,44 @@ app.post('/api/wanderguide/register', async (req, res) => {
   const { userName, pushoverKey } = req.body;
   if (!userName) return res.status(400).json({ error: 'userName required' });
   // Use a synthetic ID based on userName for non-Telegram users
-  const syntheticId = Math.abs(userName.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
-  const wu = getWanderUser(syntheticId);
-  wu.name = userName;
-  wu.enabled = true;
-  if (pushoverKey) {
-    wu.pushoverKey = pushoverKey;
-    pushoverUsers.set(userName.toLowerCase(), pushoverKey);
-  }
-  await upsertWanderUser(syntheticId, { name: userName, pushoverKey: pushoverKey || null, enabled: true });
+  const user = await registerUser({ name: userName, pushoverKey: pushoverKey || null, enabled: true });
   // Send test push if pushover key provided
   if (pushoverKey) {
     sendPushover(pushoverKey, 'WanderGuide', `Welcome ${userName}! Push notifications are working.`);
   }
-  res.json({ success: true, userId: syntheticId, userName, pushoverRegistered: !!pushoverKey });
+  res.json({ success: true, userId: user.id, userName: user.name, pushoverRegistered: !!pushoverKey });
 });
 
 // Update user location (native app replacement for Telegram live location)
 app.post('/api/wanderguide/location', async (req, res) => {
   const { userId, userName, lat, lng } = req.body;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-  const id = userId || Math.abs((userName || 'unknown').split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
-  const wu = getWanderUser(id);
-  wu.lat = lat;
-  wu.lng = lng;
-  if (userName) wu.name = userName;
-  updateWanderLocation(id, lat, lng).catch(err => console.error('DB location error:', err.message));
-  // Check proximity
-  await checkUserProximity(id);
-  res.json({ success: true, userId: id });
+  const user = userName ? getUser(userName) : null;
+  if (!user) return res.status(404).json({ error: 'User not found. Register first via /api/wanderguide/register' });
+  user.lat = lat;
+  user.lng = lng;
+  db.updateUserLocation(user.name, lat, lng).catch(err => console.error('DB location error:', err.message));
+  if (user.enabled) await checkUserProximity(user.name);
+  res.json({ success: true, userId: user.id });
 });
 
 // Enable/disable WanderGuide for a user
 app.post('/api/wanderguide/toggle', async (req, res) => {
   const { userId, userName, enabled } = req.body;
-  const id = userId || Math.abs((userName || 'unknown').split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
-  const wu = getWanderUser(id);
-  wu.enabled = !!enabled;
-  if (userName) wu.name = userName;
-  await upsertWanderUser(id, { name: userName, enabled: !!enabled });
-  res.json({ success: true, userId: id, enabled: wu.enabled });
+  const user = userName ? getUser(userName) : null;
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  user.enabled = !!enabled;
+  await registerUser({ name: user.name, enabled: !!enabled });
+  res.json({ success: true, userId: user.id, enabled: user.enabled });
 });
 
 // Get WanderGuide settings for a user
 app.get('/api/wanderguide/status', (req, res) => {
   const userId = parseInt(req.query.userId);
-  if (!userId) return res.json({ radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000, users: wanderUsers.size });
-  const wu = getWanderUser(userId);
-  res.json({ userId, name: wu.name, enabled: wu.enabled, lat: wu.lat, lng: wu.lng, pushover: !!wu.pushoverKey, radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000 });
+  if (!userId) return res.json({ radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000, users: users.size });
+  const user = getUser(req.query.userName || '');
+  if (!user) return res.json({ radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000, users: users.size });
+  res.json({ userId: user.id, name: user.name, enabled: user.enabled, lat: user.lat, lng: user.lng, pushover: !!user.pushover_key, radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000 });
 });
 
 // Update global WanderGuide settings (radius, cooldown, revisit)
@@ -306,16 +336,16 @@ app.post('/api/pushover/register', (req, res) => {
   const { name, userKey, sendTest } = req.body;
   if (!name || !userKey) return res.status(400).json({ error: 'name and userKey required' });
   const registeredName = name.toLowerCase();
-  pushoverUsers.set(registeredName, userKey);
+  registerUser({ name: registeredName, pushoverKey: userKey });
   if (sendTest) {
     sendPushover(userKey, 'WanderGuide', `Welcome ${name}! Push notifications are working. You'll be alerted when near interesting places.`);
   }
-  res.json({ success: true, registeredName, users: Array.from(pushoverUsers.keys()) });
+  res.json({ success: true, registeredName, users: getAllUserNames() });
 });
 
 // List Pushover users
 app.get('/api/pushover/users', (req, res) => {
-  res.json(Array.from(pushoverUsers.entries()).map(([name]) => name));
+  res.json(getAllUserNames());
 });
 
 // Health check
@@ -348,77 +378,49 @@ let alertRadius = 300;
 let alertCooldown = 20 * 60 * 1000;
 let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 
-// Per-user tracking: telegramUserId → { pushoverKey, lat, lng, name, enabled }
-// In-memory cache backed by PostgreSQL
-const wanderUsers = new Map();
-// Alert queue for web app display (global — all users see all alerts)
+// Alert queue for web app display
 const alertQueue = [];
 
-function getWanderUser(userId) {
-  if (!wanderUsers.has(userId)) {
-    wanderUsers.set(userId, { pushoverKey: null, lat: null, lng: null, name: '', enabled: false });
-  }
-  return wanderUsers.get(userId);
-}
-
-// Load wander users from DB on startup
-async function loadWanderUsers() {
-  try {
-    const { pool } = require('./db');
-    const result = await pool.query('SELECT * FROM wander_users');
-    for (const row of result.rows) {
-      wanderUsers.set(Number(row.telegram_user_id), {
-        pushoverKey: row.pushover_key,
-        lat: row.lat,
-        lng: row.lng,
-        name: row.name || '',
-        enabled: row.enabled
-      });
-      // Also add to pushoverUsers map
-      if (row.pushover_key && row.name) {
-        pushoverUsers.set(row.name.toLowerCase(), row.pushover_key);
-      }
-    }
-    console.log(`👤 Loaded ${result.rows.length} WanderGuide users from database`);
-  } catch (err) {
-    console.error('Failed to load wander users:', err.message);
-  }
-}
-
-async function checkUserProximity(userId) {
-  const user = getWanderUser(userId);
-  if (!user.enabled || !user.lat || !user.lng) return;
+async function checkUserProximity(userName) {
+  const user = getUser(userName);
+  if (!user || !user.enabled || !user.lat || !user.lng) return;
 
   const now = Date.now();
-  const lastAny = await dbGetLastAlertTimeAny(userId);
+  const lastAny = await db.getLastAlertTimeAny(userName);
   if (lastAny && (now - lastAny) < alertCooldown) return;
 
   const nearby = findNearbyPois(user.lat, user.lng, alertRadius);
   if (nearby.length === 0) return;
 
   for (const poi of nearby) {
-    const lastAlerted = await dbGetLastAlertTime(userId, poi.name);
+    const lastAlerted = await db.getLastAlertTime(userName, poi.name);
     if (lastAlerted && (now - lastAlerted) < alertRevisitCooldown) continue;
 
     // Mark as alerted in DB
-    await recordAlert(userId, poi.name);
+    await db.recordAlert(userName, poi.name);
 
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
     const mapsUrl = `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`;
 
-    // 1. Send Pushover — SHORT message for Siri readout (name + distance only)
-    if (user.pushoverKey) {
+    // 1. Send Pushover — SHORT message for Siri readout
+    if (user.pushover_key) {
       const pushMsg = `Hey ${user.name}, you're ${poi.distance} meters from ${poi.name}.`;
-      sendPushover(user.pushoverKey, 'WanderGuide', pushMsg, mapsUrl);
+      sendPushover(user.pushover_key, 'WanderGuide', pushMsg, mapsUrl);
     }
 
-    // 2. Send Telegram DM — FULL message with description + maps link
-    try {
-      const msg = `📍 *Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!*\n\n${poi.desc}\n\n🗺️ [Open in Maps](${mapsUrl})`;
-      await bot.telegram.sendMessage(userId, msg, { parse_mode: 'Markdown' })
-        .catch(() => bot.telegram.sendMessage(userId, msg.replace(/[*_\[\]()]/g, '')));
-    } catch (err) {
-      console.error(`Telegram alert error for ${user.name}:`, err.message);
+    // 2. Send Telegram DM if user has a telegram ID
+    if (user.telegram_user_id) {
+      try {
+        const msg = `📍 *Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!*
+
+${poi.desc}
+
+🗺️ [Open in Maps](${mapsUrl})`;
+        await bot.telegram.sendMessage(user.telegram_user_id, msg, { parse_mode: 'Markdown' })
+          .catch(() => bot.telegram.sendMessage(user.telegram_user_id, msg.replace(/[*_\[\]()\/]/g, '')));
+      } catch (err) {
+        console.error(`Telegram alert error for ${user.name}:`, err.message);
+      }
     }
 
     // 3. Add to alert queue for web app display
@@ -726,11 +728,11 @@ bot.on('location', async (ctx) => {
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
   // Update per-user WanderGuide location (memory + DB)
-  const wu = getWanderUser(userId);
-  wu.lat = latitude;
-  wu.lng = longitude;
-  wu.name = userName;
-  updateWanderLocation(userId, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
+  let user = getUserByTelegramId(userId);
+  user.lat = latitude;
+  user.lng = longitude;
+  user.name = userName;
+  db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
 
   // Check per-user proximity alerts
   await checkUserProximity(userId);
@@ -751,7 +753,7 @@ bot.on('location', async (ctx) => {
     }
   } else if (!isLive && ctx.chat.type === 'private') {
     // In DM, just acknowledge briefly
-    await ctx.reply(`📍 Got your location, ${userName}. WanderGuide is ${wu.enabled ? 'active — I\'ll alert you when you\'re near interesting places.' : 'off. Send /alerts on to enable.'}`);
+    await ctx.reply(`📍 Got your location, ${userName}. WanderGuide is ${user.enabled ? 'active — I\'ll alert you when you\'re near interesting places.' : 'off. Send /alerts on to enable.'}`);
   }
 });
 
@@ -765,15 +767,14 @@ bot.on('edited_message', async (ctx) => {
 
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Update per-user location (memory + DB)
-  const wu = getWanderUser(userId);
-  wu.lat = latitude;
-  wu.lng = longitude;
-  wu.name = userName;
-  updateWanderLocation(userId, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
-
-  // Check per-user proximity
-  await checkUserProximity(userId);
+  // Update unified user location
+  let user = getUserByTelegramId(userId);
+  if (user) {
+    user.lat = latitude;
+    user.lng = longitude;
+    db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location error:', err.message));
+    if (user.enabled) await checkUserProximity(user.name);
+  }
 });
 
 // ===== ADMIN COMMANDS =====
@@ -862,19 +863,19 @@ bot.command('deltip', (ctx) => {
 bot.command('alerts', (ctx) => {
   trackGroup(ctx);
   const userId = ctx.from.id;
-  const wu = getWanderUser(userId);
-  wu.name = ctx.from.first_name || 'Someone';
+  let user = getUserByTelegramId(userId);
+  user.name = ctx.from.first_name || 'Someone';
   const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
   if (arg === 'off') {
-    wu.enabled = false;
-    upsertWanderUser(userId, { name: wu.name, enabled: false });
-    ctx.reply(`📍 WanderGuide disabled for ${wu.name}.`);
+    user.enabled = false;
+    registerUser({ name: user.name, enabled: false });
+    ctx.reply(`📍 WanderGuide disabled for ${user.name}.`);
   } else if (arg === 'on') {
-    wu.enabled = true;
-    upsertWanderUser(userId, { name: wu.name, enabled: true });
-    ctx.reply(`📍 WanderGuide enabled for ${wu.name}! Share your live location in this DM to start receiving alerts.${wu.pushoverKey ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
+    user.enabled = true;
+    registerUser({ name: user.name, enabled: true });
+    ctx.reply(`📍 WanderGuide enabled for ${user.name}! Share your live location in this DM to start receiving alerts.${user.pushover_key ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
   } else {
-    ctx.reply(`📍 WanderGuide for ${wu.name}: ${wu.enabled ? 'ON' : 'OFF'}\nPushover: ${wu.pushoverKey ? 'registered' : 'not set'}\nLocation: ${wu.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
+    ctx.reply(`📍 WanderGuide for ${user.name}: ${user.enabled ? 'ON' : 'OFF'}\nPushover: ${user.pushover_key ? 'registered' : 'not set'}\nLocation: ${user.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
   }
 });
 
@@ -882,15 +883,15 @@ bot.command('alerts', (ctx) => {
 bot.command('register', (ctx) => {
   trackGroup(ctx);
   const userId = ctx.from.id;
-  const wu = getWanderUser(userId);
-  wu.name = ctx.from.first_name || 'Someone';
+  let user = getUserByTelegramId(userId);
+  user.name = ctx.from.first_name || 'Someone';
   const key = ctx.message.text.replace('/register', '').trim();
   if (!key) return ctx.reply('Usage: /register YOUR_PUSHOVER_USER_KEY\n\nGet your key from the Pushover app.');
-  wu.pushoverKey = key;
-  pushoverUsers.set(wu.name.toLowerCase(), key);
-  upsertWanderUser(userId, { name: wu.name, pushoverKey: key });
-  ctx.reply(`✅ Pushover registered for ${wu.name}! Sending a test notification now...`);
-  sendPushover(key, 'WanderGuide', `Welcome ${wu.name}! Push notifications are working. You'll be alerted when near interesting places.`);
+  user.pushover_key = key;
+    // pushover handled by registerUser
+  registerUser({ name: user.name, pushoverKey: key });
+  ctx.reply(`✅ Pushover registered for ${user.name}! Sending a test notification now...`);
+  sendPushover(key, 'WanderGuide', `Welcome ${user.name}! Push notifications are working. You'll be alerted when near interesting places.`);
 });
 
 // /radius <meters> — change alert radius
@@ -928,9 +929,8 @@ bot.command('nearby', async (ctx) => {
   trackGroup(ctx);
   const chatId = ctx.chat.id;
   const userId = ctx.from.id;
-  const wu = getWanderUser(userId);
-  // Try per-user location first, then fall back to chat location
-  const loc = (wu.lat ? { latitude: wu.lat, longitude: wu.lng } : lastLocations.get(chatId));
+  const user = getUserByTelegramId(userId);
+  const loc = (user && user.lat ? { latitude: user.lat, longitude: user.lng } : lastLocations.get(chatId));
   if (!loc) return ctx.reply('📍 Share your location first (paperclip → Location), then try /nearby again.');
 
   const nearby = findNearbyPois(loc.latitude, loc.longitude, 1000); // 1km radius for manual check
@@ -972,10 +972,10 @@ bot.command('addpoi', (ctx) => {
 bot.command('status', (ctx) => {
   trackGroup(ctx);
   const userId = ctx.from.id;
-  const wu = getWanderUser(userId);
-  const wanderStatus = wu.enabled ? '📍 ON' : '⭕ OFF';
-  const locStatus = wu.lat ? `${wu.lat.toFixed(4)}, ${wu.lng.toFixed(4)}` : 'not shared';
-  const pushStatus = wu.pushoverKey ? 'registered' : 'not set';
+  let user = getUserByTelegramId(userId);
+  const wanderStatus = user.enabled ? '📍 ON' : '⭕ OFF';
+  const locStatus = user.lat ? `${user.lat.toFixed(4)}, ${user?.lng.toFixed(4)}` : 'not shared';
+  const pushStatus = user.pushover_key ? 'registered' : 'not set';
   ctx.reply(
     `⚙️ *Bot Status*\n` +
     `• Response mode: ${settings.responseMode}\n` +
@@ -986,7 +986,7 @@ bot.command('status', (ctx) => {
     `• Your location: ${locStatus}\n` +
     `• Pushover: ${pushStatus}\n` +
     `• POIs in database: ${require('./poi-database').getAllPois().length}\n` +
-    `• WanderGuide users: ${wanderUsers.size}`,
+    `• WanderGuide users: ${users.size}`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -1118,9 +1118,9 @@ bot.on('text', async (ctx) => {
 // Launch with database initialization
 async function start() {
   try {
-    await initDB();
+    await db.initDB();
     await loadCustomPois();
-    await loadWanderUsers();
+    await loadUsers();
   } catch (err) {
     console.error('DB init error (continuing without persistence):', err.message);
   }

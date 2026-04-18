@@ -8,6 +8,19 @@ const pool = new Pool({
 // Initialize tables
 async function initDB() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      pushover_key TEXT,
+      telegram_user_id BIGINT UNIQUE,
+      web_session_id TEXT,
+      enabled BOOLEAN DEFAULT false,
+      lat DOUBLE PRECISION,
+      lng DOUBLE PRECISION,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS custom_pois (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -16,27 +29,85 @@ async function initDB() {
       description TEXT,
       city TEXT DEFAULT 'Custom',
       category TEXT DEFAULT 'hidden-gem',
+      created_by TEXT,
       created_at TIMESTAMP DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS wander_users (
-      telegram_user_id BIGINT PRIMARY KEY,
-      name TEXT,
-      pushover_key TEXT,
-      enabled BOOLEAN DEFAULT false,
-      lat DOUBLE PRECISION,
-      lng DOUBLE PRECISION,
-      updated_at TIMESTAMP DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS alert_history (
       id SERIAL PRIMARY KEY,
-      telegram_user_id BIGINT NOT NULL,
+      user_name TEXT NOT NULL,
       poi_name TEXT NOT NULL,
       alerted_at TIMESTAMP DEFAULT NOW()
     );
+
+    -- Migrate from old tables if they exist
+    DO $$ BEGIN
+      IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'wander_users') THEN
+        INSERT INTO users (name, pushover_key, telegram_user_id, enabled, lat, lng)
+        SELECT name, pushover_key, telegram_user_id, enabled, lat, lng FROM wander_users
+        ON CONFLICT (name) DO NOTHING;
+        DROP TABLE wander_users;
+      END IF;
+    END $$;
   `);
   console.log('✅ Database tables initialized');
+}
+
+// === USERS ===
+
+async function getUserByName(name) {
+  const result = await pool.query('SELECT * FROM users WHERE LOWER(name) = LOWER($1)', [name]);
+  return result.rows[0] || null;
+}
+
+async function getUserByTelegramId(telegramId) {
+  const result = await pool.query('SELECT * FROM users WHERE telegram_user_id = $1', [telegramId]);
+  return result.rows[0] || null;
+}
+
+async function getUserBySessionId(sessionId) {
+  const result = await pool.query('SELECT * FROM users WHERE web_session_id = $1', [sessionId]);
+  return result.rows[0] || null;
+}
+
+async function getAllUsers() {
+  const result = await pool.query('SELECT * FROM users ORDER BY name');
+  return result.rows;
+}
+
+async function getEnabledUsers() {
+  const result = await pool.query('SELECT * FROM users WHERE enabled = true');
+  return result.rows;
+}
+
+async function upsertUser(data) {
+  // data: { name, pushoverKey, telegramUserId, webSessionId, enabled, lat, lng }
+  const result = await pool.query(`
+    INSERT INTO users (name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+    ON CONFLICT (name) DO UPDATE SET
+      pushover_key = COALESCE($2, users.pushover_key),
+      telegram_user_id = COALESCE($3, users.telegram_user_id),
+      web_session_id = COALESCE($4, users.web_session_id),
+      enabled = COALESCE($5, users.enabled),
+      lat = COALESCE($6, users.lat),
+      lng = COALESCE($7, users.lng),
+      updated_at = NOW()
+    RETURNING *
+  `, [
+    data.name,
+    data.pushoverKey || null,
+    data.telegramUserId || null,
+    data.webSessionId || null,
+    data.enabled ?? null,
+    data.lat || null,
+    data.lng || null
+  ]);
+  return result.rows[0];
+}
+
+async function updateUserLocation(name, lat, lng) {
+  await pool.query('UPDATE users SET lat = $1, lng = $2, updated_at = NOW() WHERE LOWER(name) = LOWER($3)', [lat, lng, name]);
 }
 
 // === CUSTOM POIs ===
@@ -46,10 +117,10 @@ async function getCustomPois() {
   return result.rows;
 }
 
-async function addCustomPoiDB(name, lat, lng, desc) {
+async function addCustomPoiDB(name, lat, lng, desc, createdBy) {
   await pool.query(
-    'INSERT INTO custom_pois (name, lat, lng, description) VALUES ($1, $2, $3, $4)',
-    [name, lat, lng, desc]
+    'INSERT INTO custom_pois (name, lat, lng, description, created_by) VALUES ($1, $2, $3, $4, $5)',
+    [name, lat, lng, desc, createdBy || null]
   );
 }
 
@@ -57,72 +128,35 @@ async function clearCustomPoisDB() {
   await pool.query('DELETE FROM custom_pois');
 }
 
-// === WANDER USERS ===
-
-async function getWanderUserDB(telegramUserId) {
-  const result = await pool.query('SELECT * FROM wander_users WHERE telegram_user_id = $1', [telegramUserId]);
-  return result.rows[0] || null;
-}
-
-async function upsertWanderUser(telegramUserId, data) {
-  await pool.query(`
-    INSERT INTO wander_users (telegram_user_id, name, pushover_key, enabled, lat, lng, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, NOW())
-    ON CONFLICT (telegram_user_id) DO UPDATE SET
-      name = COALESCE($2, wander_users.name),
-      pushover_key = COALESCE($3, wander_users.pushover_key),
-      enabled = COALESCE($4, wander_users.enabled),
-      lat = COALESCE($5, wander_users.lat),
-      lng = COALESCE($6, wander_users.lng),
-      updated_at = NOW()
-  `, [telegramUserId, data.name || null, data.pushoverKey || null, data.enabled ?? null, data.lat || null, data.lng || null]);
-}
-
-async function updateWanderLocation(telegramUserId, lat, lng) {
-  await pool.query(
-    'UPDATE wander_users SET lat = $1, lng = $2, updated_at = NOW() WHERE telegram_user_id = $3',
-    [lat, lng, telegramUserId]
-  );
-}
-
-async function getAllWanderUsers() {
-  const result = await pool.query('SELECT * FROM wander_users WHERE enabled = true');
-  return result.rows;
-}
-
 // === ALERT HISTORY ===
 
-async function getLastAlertTime(telegramUserId, poiName) {
+async function getLastAlertTime(userName, poiName) {
   const result = await pool.query(
-    'SELECT alerted_at FROM alert_history WHERE telegram_user_id = $1 AND poi_name = $2 ORDER BY alerted_at DESC LIMIT 1',
-    [telegramUserId, poiName]
+    'SELECT alerted_at FROM alert_history WHERE LOWER(user_name) = LOWER($1) AND poi_name = $2 ORDER BY alerted_at DESC LIMIT 1',
+    [userName, poiName]
   );
   return result.rows[0]?.alerted_at ? new Date(result.rows[0].alerted_at).getTime() : 0;
 }
 
-async function getLastAlertTimeAny(telegramUserId) {
+async function getLastAlertTimeAny(userName) {
   const result = await pool.query(
-    'SELECT alerted_at FROM alert_history WHERE telegram_user_id = $1 ORDER BY alerted_at DESC LIMIT 1',
-    [telegramUserId]
+    'SELECT alerted_at FROM alert_history WHERE LOWER(user_name) = LOWER($1) ORDER BY alerted_at DESC LIMIT 1',
+    [userName]
   );
   return result.rows[0]?.alerted_at ? new Date(result.rows[0].alerted_at).getTime() : 0;
 }
 
-async function recordAlert(telegramUserId, poiName) {
+async function recordAlert(userName, poiName) {
   await pool.query(
-    'INSERT INTO alert_history (telegram_user_id, poi_name) VALUES ($1, $2)',
-    [telegramUserId, poiName]
+    'INSERT INTO alert_history (user_name, poi_name) VALUES ($1, $2)',
+    [userName, poiName]
   );
-}
-
-async function clearAlertHistory(telegramUserId) {
-  await pool.query('DELETE FROM alert_history WHERE telegram_user_id = $1', [telegramUserId]);
 }
 
 module.exports = {
-  initDB,
+  initDB, pool,
+  getUserByName, getUserByTelegramId, getUserBySessionId,
+  getAllUsers, getEnabledUsers, upsertUser, updateUserLocation,
   getCustomPois, addCustomPoiDB, clearCustomPoisDB,
-  getWanderUserDB, upsertWanderUser, updateWanderLocation, getAllWanderUsers,
-  getLastAlertTime, getLastAlertTimeAny, recordAlert, clearAlertHistory,
-  pool
+  getLastAlertTime, getLastAlertTimeAny, recordAlert
 };
