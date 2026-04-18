@@ -26,7 +26,7 @@ function getUser(name) {
 
 function getUserByTelegramId(telegramId) {
   for (const u of users.values()) {
-    if (u.telegram_user_id === telegramId) return u;
+    if (String(u.telegram_user_id) === String(telegramId)) return u;
   }
   return null;
 }
