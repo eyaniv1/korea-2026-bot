@@ -985,7 +985,7 @@ bot.command('nearby', async (ctx) => {
   const loc = (user && user.lat ? { latitude: user.lat, longitude: user.lng } : lastLocations.get(chatId));
   if (!loc) return ctx.reply('📍 Share your location first (paperclip → Location), then try /nearby again.');
 
-  const nearby = findNearbyPois(loc.latitude, loc.longitude, 1000); // 1km radius for manual check
+  const nearby = findNearbyPois(loc.latitude, loc.longitude, alertRadius * 3);
   if (nearby.length === 0) return ctx.reply('No known POIs within 1km. Try sharing a new location or walking toward a neighborhood center.');
 
   const list = nearby.slice(0, 8).map((p, i) =>
