@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:NMfJJeKbQFUBUgAxTCDCOXETwIDKUJdU@monorail.proxy.rlwy.net:34168/railway';
 console.log('DB URL configured:', dbUrl ? `${dbUrl.substring(0, 30)}...` : 'NOT SET');
 
 const pool = new Pool({
