@@ -317,11 +317,11 @@ app.get('/api/wanderguide/status', (req, res) => {
 });
 
 // Update global WanderGuide settings (radius, cooldown, revisit)
-app.post('/api/wanderguide/settings', (req, res) => {
+app.post('/api/wanderguide/settings', async (req, res) => {
   const { radius, cooldown, revisit } = req.body;
-  if (radius && radius >= 50 && radius <= 5000) alertRadius = radius;
-  if (cooldown && cooldown >= 1 && cooldown <= 120) alertCooldown = cooldown * 60 * 1000;
-  if (revisit && revisit >= 0.5 && revisit <= 24) alertRevisitCooldown = revisit * 3600 * 1000;
+  if (radius && radius >= 50 && radius <= 5000) { alertRadius = radius; await db.setSetting('alertRadius', radius); }
+  if (cooldown && cooldown >= 1 && cooldown <= 120) { alertCooldown = cooldown * 60 * 1000; await db.setSetting('alertCooldown', cooldown); }
+  if (revisit && revisit >= 0.5 && revisit <= 24) { alertRevisitCooldown = revisit * 3600 * 1000; await db.setSetting('alertRevisit', revisit); }
   res.json({ success: true, radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000 });
 });
 
@@ -375,8 +375,8 @@ const activeGroups = new Set();
 const lastLocations = new Map();
 
 // ===== WANDERGUIDE — Per-User Proximity Alert System =====
-let alertRadius = 300;
-let alertCooldown = 20 * 60 * 1000;
+let alertRadius = 150;
+let alertCooldown = 5 * 60 * 1000;
 let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 
 // Alert queue for web app display
@@ -945,7 +945,8 @@ bot.command('radius', (ctx) => {
   const val = parseInt(ctx.message.text.replace('/radius', '').trim());
   if (!val || val < 50 || val > 5000) return ctx.reply(`📍 WanderGuide radius: ${alertRadius}m\nUsage: /radius <50-5000>`);
   alertRadius = val;
-  ctx.reply(`📍 WanderGuide radius set to ${alertRadius}m`);
+  db.setSetting('alertRadius', val);
+  ctx.reply(`📍 Radius set to ${alertRadius}m (saved)`);
 });
 
 // /cooldown <minutes> — change time between alerts
@@ -953,9 +954,10 @@ bot.command('cooldown', (ctx) => {
   trackGroup(ctx);
   if (!isAdmin(ctx)) return ctx.reply('Only Eran can change WanderGuide settings.');
   const val = parseInt(ctx.message.text.replace('/cooldown', '').trim());
-  if (!val || val < 1 || val > 120) return ctx.reply(`📍 WanderGuide cooldown: ${alertCooldown / 60000} min\nUsage: /cooldown <1-120> (minutes)`);
+  if (!val || val < 1 || val > 120) return ctx.reply(`Cooldown: ${alertCooldown / 60000} min. Usage: /cooldown 1-120`);
   alertCooldown = val * 60 * 1000;
-  ctx.reply(`📍 WanderGuide cooldown set to ${val} min between alerts`);
+  db.setSetting('alertCooldown', val);
+  ctx.reply(`📍 Cooldown set to ${val} min (saved)`);
 });
 
 // /realert <hours> — change time before re-alerting same POI
@@ -963,9 +965,10 @@ bot.command('realert', (ctx) => {
   trackGroup(ctx);
   if (!isAdmin(ctx)) return ctx.reply('Only Eran can change WanderGuide settings.');
   const val = parseFloat(ctx.message.text.replace('/realert', '').trim());
-  if (!val || val < 0.5 || val > 24) return ctx.reply(`📍 WanderGuide re-alert: ${alertRevisitCooldown / 3600000} hrs\nUsage: /realert <0.5-24> (hours)`);
+  if (!val || val < 0.5 || val > 24) return ctx.reply(`Re-alert: ${alertRevisitCooldown / 3600000} hrs. Usage: /realert 0.5-24`);
   alertRevisitCooldown = val * 60 * 60 * 1000;
-  ctx.reply(`📍 WanderGuide re-alert set to ${val} hrs for same POI`);
+  db.setSetting('alertRevisit', val);
+  ctx.reply(`📍 Re-alert set to ${val} hrs (saved)`);
 });
 
 // /nearby — show nearby POIs based on last known location
@@ -1166,6 +1169,12 @@ async function start() {
     await db.initDB();
     await loadCustomPois();
     await loadUsers();
+    // Load persisted settings
+    const s = await db.loadSettings();
+    alertRadius = s.alertRadius;
+    alertCooldown = s.alertCooldown;
+    alertRevisitCooldown = s.alertRevisitCooldown;
+    console.log(`⚙️ Settings: radius=${alertRadius}m, cooldown=${alertCooldown/60000}min, revisit=${alertRevisitCooldown/3600000}hrs`);
   } catch (err) {
     console.error('DB init error (continuing without persistence):', err.message, err.stack);
   }

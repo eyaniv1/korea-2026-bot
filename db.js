@@ -24,6 +24,11 @@ async function initDB() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS custom_pois (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -147,6 +152,31 @@ async function updateUserLocation(name, lat, lng) {
   await pool.query('UPDATE users SET lat = $1, lng = $2, updated_at = NOW() WHERE LOWER(name) = LOWER($3)', [lat, lng, name]);
 }
 
+// === SETTINGS ===
+
+async function getSetting(key, defaultValue) {
+  const result = await pool.query('SELECT value FROM settings WHERE key = $1', [key]);
+  return result.rows[0] ? result.rows[0].value : defaultValue;
+}
+
+async function setSetting(key, value) {
+  await pool.query(
+    'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+    [key, String(value)]
+  );
+}
+
+async function loadSettings() {
+  const radius = await getSetting('alertRadius', '150');
+  const cooldown = await getSetting('alertCooldown', '5');
+  const revisit = await getSetting('alertRevisit', '4');
+  return {
+    alertRadius: parseInt(radius),
+    alertCooldown: parseInt(cooldown) * 60 * 1000,
+    alertRevisitCooldown: parseFloat(revisit) * 60 * 60 * 1000
+  };
+}
+
 // === CUSTOM POIs ===
 
 async function getCustomPois() {
@@ -194,6 +224,7 @@ module.exports = {
   initDB, pool,
   getUserByName, getUserByTelegramId, getUserBySessionId,
   getAllUsers, getEnabledUsers, upsertUser, updateUserLocation,
+  getSetting, setSetting, loadSettings,
   getCustomPois, addCustomPoiDB, clearCustomPoisDB,
   getLastAlertTime, getLastAlertTimeAny, recordAlert
 };
