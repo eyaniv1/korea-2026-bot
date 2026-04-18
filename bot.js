@@ -228,6 +228,72 @@ app.post('/api/push', (req, res) => {
   }
 });
 
+// ===== NATIVE APP ENDPOINTS =====
+
+// Register a WanderGuide user (native app replacement for Telegram /register + /alerts)
+app.post('/api/wanderguide/register', async (req, res) => {
+  const { userName, pushoverKey } = req.body;
+  if (!userName) return res.status(400).json({ error: 'userName required' });
+  // Use a synthetic ID based on userName for non-Telegram users
+  const syntheticId = Math.abs(userName.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
+  const wu = getWanderUser(syntheticId);
+  wu.name = userName;
+  wu.enabled = true;
+  if (pushoverKey) {
+    wu.pushoverKey = pushoverKey;
+    pushoverUsers.set(userName.toLowerCase(), pushoverKey);
+  }
+  await upsertWanderUser(syntheticId, { name: userName, pushoverKey: pushoverKey || null, enabled: true });
+  // Send test push if pushover key provided
+  if (pushoverKey) {
+    sendPushover(pushoverKey, 'WanderGuide', `Welcome ${userName}! Push notifications are working.`);
+  }
+  res.json({ success: true, userId: syntheticId, userName, pushoverRegistered: !!pushoverKey });
+});
+
+// Update user location (native app replacement for Telegram live location)
+app.post('/api/wanderguide/location', async (req, res) => {
+  const { userId, userName, lat, lng } = req.body;
+  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
+  const id = userId || Math.abs((userName || 'unknown').split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
+  const wu = getWanderUser(id);
+  wu.lat = lat;
+  wu.lng = lng;
+  if (userName) wu.name = userName;
+  updateWanderLocation(id, lat, lng).catch(err => console.error('DB location error:', err.message));
+  // Check proximity
+  await checkUserProximity(id);
+  res.json({ success: true, userId: id });
+});
+
+// Enable/disable WanderGuide for a user
+app.post('/api/wanderguide/toggle', async (req, res) => {
+  const { userId, userName, enabled } = req.body;
+  const id = userId || Math.abs((userName || 'unknown').split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0));
+  const wu = getWanderUser(id);
+  wu.enabled = !!enabled;
+  if (userName) wu.name = userName;
+  await upsertWanderUser(id, { name: userName, enabled: !!enabled });
+  res.json({ success: true, userId: id, enabled: wu.enabled });
+});
+
+// Get WanderGuide settings for a user
+app.get('/api/wanderguide/status', (req, res) => {
+  const userId = parseInt(req.query.userId);
+  if (!userId) return res.json({ radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000, users: wanderUsers.size });
+  const wu = getWanderUser(userId);
+  res.json({ userId, name: wu.name, enabled: wu.enabled, lat: wu.lat, lng: wu.lng, pushover: !!wu.pushoverKey, radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000 });
+});
+
+// Update global WanderGuide settings (radius, cooldown, revisit)
+app.post('/api/wanderguide/settings', (req, res) => {
+  const { radius, cooldown, revisit } = req.body;
+  if (radius && radius >= 50 && radius <= 5000) alertRadius = radius;
+  if (cooldown && cooldown >= 1 && cooldown <= 120) alertCooldown = cooldown * 60 * 1000;
+  if (revisit && revisit >= 0.5 && revisit <= 24) alertRevisitCooldown = revisit * 3600 * 1000;
+  res.json({ success: true, radius: alertRadius, cooldown: alertCooldown / 60000, revisit: alertRevisitCooldown / 3600000 });
+});
+
 // Alert queue endpoint — web app polls this for proximity alerts
 app.get('/api/alerts', (req, res) => {
   const since = parseInt(req.query.since) || 0;
