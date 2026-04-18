@@ -1,4 +1,5 @@
 if (require("fs").existsSync(".env")) require("dotenv").config();
+console.log("ENV KEYS:", Object.keys(process.env).filter(k => k.includes("DATA") || k.includes("PG") || k.includes("TELE") || k.includes("ANTH")).join(", "));
 const { Telegraf } = require('telegraf');
 const Anthropic = require('@anthropic-ai/sdk');
 const Groq = require('groq-sdk');
