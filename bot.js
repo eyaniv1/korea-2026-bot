@@ -894,6 +894,53 @@ bot.command('register', (ctx) => {
   sendPushover(key, 'WanderGuide', `Welcome ${user.name}! Push notifications are working. You'll be alerted when near interesting places.`);
 });
 
+// /users — list all registered users
+bot.command('users', (ctx) => {
+  trackGroup(ctx);
+  if (users.size === 0) return ctx.reply('No registered users.');
+  const list = Array.from(users.values()).map(u =>
+    `• ${u.name} — WG: ${u.enabled ? 'ON' : 'OFF'}, Push: ${u.pushover_key ? '✅' : '❌'}, GPS: ${u.lat ? '📍' : '❌'}${u.telegram_user_id ? ', TG: ✅' : ''}`
+  ).join('\n');
+  ctx.reply(`👥 *Registered Users (${users.size}):*\n\n${list}`, { parse_mode: 'Markdown' });
+});
+
+// /deleteuser <name> — remove a user
+bot.command('deleteuser', async (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can delete users.');
+  const name = ctx.message.text.replace('/deleteuser', '').trim();
+  if (!name) return ctx.reply(`Usage: /deleteuser <name>\nRegistered: ${getAllUserNames().join(', ')}`);
+  const user = getUser(name);
+  if (!user) return ctx.reply(`User "${name}" not found. Registered: ${getAllUserNames().join(', ')}`);
+  await deleteUser(name);
+  ctx.reply(`🗑️ User "${user.name}" deleted.`);
+});
+
+// /alertsall on|off — admin toggle for all users
+bot.command('alertsall', async (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can change global settings.');
+  const arg = ctx.message.text.replace('/alertsall', '').trim().toLowerCase();
+  if (arg !== 'on' && arg !== 'off') return ctx.reply('Usage: /alertsall on or /alertsall off');
+  const enabled = arg === 'on';
+  for (const u of users.values()) {
+    u.enabled = enabled;
+    await registerUser({ name: u.name, enabled });
+  }
+  ctx.reply(`📍 WanderGuide ${enabled ? 'enabled' : 'disabled'} for ALL ${users.size} users.`);
+});
+
+// /broadcast <message> — send push to all users
+bot.command('broadcast', (ctx) => {
+  trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Only Eran can broadcast.');
+  const msg = ctx.message.text.replace('/broadcast', '').trim();
+  if (!msg) return ctx.reply('Usage: /broadcast Your message here');
+  sendPushoverToAll('Trip Message', msg);
+  alertQueue.push({ text: `📢 <b>Broadcast:</b> ${msg}`, time: Date.now() });
+  ctx.reply(`📢 Broadcast sent to ${users.size} users: "${msg}"`);
+});
+
 // /radius <meters> — change alert radius
 bot.command('radius', (ctx) => {
   trackGroup(ctx);
@@ -994,31 +1041,32 @@ bot.command('status', (ctx) => {
 // /help — show all commands
 bot.command('help', (ctx) => {
   trackGroup(ctx);
-  ctx.reply(
-    `*Commands:*\n` +
-    `🗺️ /plan — today's itinerary\n` +
-    `🌐 /translate <text> — translate to Korean\n` +
-    `📍 /nearby — show POIs near your location\n` +
-    `📝 /tips — show curated tips\n` +
-    `⚙️ /status — bot settings\n` +
-    `/help — this message\n\n` +
-    `*WanderGuide (proximity alerts):*\n` +
-    `/alerts on|off — enable/disable alerts\n` +
-    `/radius <meters> — set alert distance (default 300)\n` +
-    `/cooldown <minutes> — time between alerts (default 20)\n` +
-    `/realert <hours> — re-alert same POI after (default 4)\n` +
+  const admin = isAdmin(ctx);
+  let text = `*Everyone:*\n` +
+    `/alerts on|off — enable/disable your proximity alerts\n` +
+    `/register <pushover_key> — register for push notifications\n` +
     `/nearby — show POIs within 1km\n` +
+    `/status — your WanderGuide status\n` +
+    `/plan — today's itinerary\n` +
+    `/translate <text> — translate to Korean\n` +
+    `/tips — show curated tips\n` +
+    `/users — list registered users\n` +
+    `/help — this message\n`;
+  if (admin) {
+    text += `\n*Admin:*\n` +
+    `/alertsall on|off — toggle alerts for ALL users\n` +
+    `/broadcast <msg> — push message to everyone\n` +
+    `/radius <meters> — set alert distance (default 300)\n` +
+    `/cooldown <min> — time between alerts (default 20)\n` +
+    `/realert <hrs> — re-alert same POI (default 4)\n` +
     `/addpoi <lat> <lng> <desc> — add custom POI\n` +
-    `/clearpois — remove all custom POIs\n\n` +
-    `*Admin (Eran only):*\n` +
-    `/quiet — only respond to commands\n` +
-    `/normal — respond when mentioned (default)\n` +
-    `/chatty — respond to everything\n` +
+    `/clearpois — remove all custom POIs\n` +
+    `/deleteuser <name> — remove a user\n` +
+    `/quiet|/normal|/chatty — response mode\n` +
     `/schedule on|off — toggle daily messages\n` +
-    `/addtip <text> — add a tip\n` +
-    `/deltip <num> — remove a tip`,
-    { parse_mode: 'Markdown' }
-  );
+    `/addtip|/deltip — manage tips\n`;
+  }
+  ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
 // Handle /start command
