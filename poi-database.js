@@ -100,15 +100,40 @@ const STATIC_POIS = [
   { name: "Gyeongju National Museum", lat: 35.8315, lng: 129.2268, desc: "Excellent museum covering Silla dynasty history. Gold crowns, Buddhist art, weapons. Free entry.", city: "Gyeongju", category: "culture" },
 ];
 
-// Runtime POIs added via Telegram /addpoi command
-const customPois = [];
+// Runtime POIs — loaded from database on startup, kept in sync
+let customPois = [];
+
+// Load custom POIs from database into memory
+async function loadCustomPois() {
+  try {
+    const { getCustomPois } = require('./db');
+    customPois = await getCustomPois();
+    console.log(`📍 Loaded ${customPois.length} custom POIs from database`);
+  } catch (err) {
+    console.error('Failed to load custom POIs from DB:', err.message);
+  }
+}
 
 function getAllPois() {
   return [...STATIC_POIS, ...customPois];
 }
 
 function addCustomPoi(name, lat, lng, desc) {
+  // Add to memory immediately
   customPois.push({ name, lat, lng, desc, city: 'Custom', category: 'hidden-gem' });
+  // Persist to database
+  try {
+    const { addCustomPoiDB } = require('./db');
+    addCustomPoiDB(name, lat, lng, desc).catch(err => console.error('DB addPoi error:', err.message));
+  } catch (err) { /* db not ready yet */ }
+}
+
+function clearCustomPois() {
+  customPois.length = 0;
+  try {
+    const { clearCustomPoisDB } = require('./db');
+    clearCustomPoisDB().catch(err => console.error('DB clearPois error:', err.message));
+  } catch (err) { /* db not ready yet */ }
 }
 
 function getDistance(lat1, lng1, lat2, lng2) {
@@ -126,4 +151,4 @@ function findNearbyPois(lat, lng, radiusMeters = 300) {
     .sort((a, b) => a.distance - b.distance);
 }
 
-module.exports = { getAllPois, addCustomPoi, findNearbyPois, getDistance, customPois };
+module.exports = { getAllPois, addCustomPoi, clearCustomPois, findNearbyPois, getDistance, customPois, loadCustomPois };

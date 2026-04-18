@@ -6,7 +6,8 @@ const cron = require('node-cron');
 const express = require('express');
 const cors = require('cors');
 const { TRIP_CONTEXT } = require('./trip-context');
-const { findNearbyPois, addCustomPoi, getDistance } = require('./poi-database');
+const { findNearbyPois, addCustomPoi, clearCustomPois, getDistance, loadCustomPois } = require('./poi-database');
+const { initDB, getWanderUserDB, upsertWanderUser, updateWanderLocation, getLastAlertTime: dbGetLastAlertTime, getLastAlertTimeAny: dbGetLastAlertTimeAny, recordAlert, clearAlertHistory } = require('./db');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const anthropic = new Anthropic();
@@ -162,7 +163,7 @@ When providing a voucher link, format it as: [📎 Description](https://eyaniv1.
     }
     const clearMatch = reply.match(/\{"clearPois":\s*true\s*\}/);
     if (clearMatch) {
-      require('./poi-database').customPois.length = 0;
+      clearCustomPois();
       reply = reply.replace(/\{"clearPois":\s*true\s*\}/, '').trim();
     }
 
@@ -195,7 +196,7 @@ app.post('/api/pois', (req, res) => {
 
 // Clear custom POIs
 app.delete('/api/pois', (req, res) => {
-  require('./poi-database').customPois.length = 0;
+  clearCustomPois();
   res.json({ success: true });
 });
 
@@ -256,24 +257,41 @@ let alertRadius = 300;
 let alertCooldown = 20 * 60 * 1000;
 let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 
-// Per-user tracking: telegramUserId → { pushoverKey, lat, lng, name, enabled, alertHistory:{poiName→timestamp} }
+// Per-user tracking: telegramUserId → { pushoverKey, lat, lng, name, enabled }
+// In-memory cache backed by PostgreSQL
 const wanderUsers = new Map();
 // Alert queue for web app display (global — all users see all alerts)
 const alertQueue = [];
 
 function getWanderUser(userId) {
   if (!wanderUsers.has(userId)) {
-    wanderUsers.set(userId, { pushoverKey: null, lat: null, lng: null, name: '', enabled: false, alertHistory: {} });
+    wanderUsers.set(userId, { pushoverKey: null, lat: null, lng: null, name: '', enabled: false });
   }
   return wanderUsers.get(userId);
 }
 
-function getLastAlertTimeForUser(user) {
-  let latest = 0;
-  for (const time of Object.values(user.alertHistory)) {
-    if (time > latest) latest = time;
+// Load wander users from DB on startup
+async function loadWanderUsers() {
+  try {
+    const { pool } = require('./db');
+    const result = await pool.query('SELECT * FROM wander_users');
+    for (const row of result.rows) {
+      wanderUsers.set(Number(row.telegram_user_id), {
+        pushoverKey: row.pushover_key,
+        lat: row.lat,
+        lng: row.lng,
+        name: row.name || '',
+        enabled: row.enabled
+      });
+      // Also add to pushoverUsers map
+      if (row.pushover_key && row.name) {
+        pushoverUsers.set(row.name.toLowerCase(), row.pushover_key);
+      }
+    }
+    console.log(`👤 Loaded ${result.rows.length} WanderGuide users from database`);
+  } catch (err) {
+    console.error('Failed to load wander users:', err.message);
   }
-  return latest;
 }
 
 async function checkUserProximity(userId) {
@@ -281,18 +299,18 @@ async function checkUserProximity(userId) {
   if (!user.enabled || !user.lat || !user.lng) return;
 
   const now = Date.now();
-  const timeSinceLastAlert = now - getLastAlertTimeForUser(user);
-  if (timeSinceLastAlert < alertCooldown) return;
+  const lastAny = await dbGetLastAlertTimeAny(userId);
+  if (lastAny && (now - lastAny) < alertCooldown) return;
 
   const nearby = findNearbyPois(user.lat, user.lng, alertRadius);
   if (nearby.length === 0) return;
 
   for (const poi of nearby) {
-    const lastAlerted = user.alertHistory[poi.name] || 0;
+    const lastAlerted = await dbGetLastAlertTime(userId, poi.name);
     if (lastAlerted && (now - lastAlerted) < alertRevisitCooldown) continue;
 
-    // Mark as alerted
-    user.alertHistory[poi.name] = now;
+    // Mark as alerted in DB
+    await recordAlert(userId, poi.name);
 
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
     const mapsUrl = `https://www.google.com/maps/@${poi.lat},${poi.lng},17z`;
@@ -616,11 +634,12 @@ bot.on('location', async (ctx) => {
   // Update general location store
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Update per-user WanderGuide location
+  // Update per-user WanderGuide location (memory + DB)
   const wu = getWanderUser(userId);
   wu.lat = latitude;
   wu.lng = longitude;
   wu.name = userName;
+  updateWanderLocation(userId, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
 
   // Check per-user proximity alerts
   await checkUserProximity(userId);
@@ -655,11 +674,12 @@ bot.on('edited_message', async (ctx) => {
 
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Update per-user location
+  // Update per-user location (memory + DB)
   const wu = getWanderUser(userId);
   wu.lat = latitude;
   wu.lng = longitude;
   wu.name = userName;
+  updateWanderLocation(userId, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
 
   // Check per-user proximity
   await checkUserProximity(userId);
@@ -756,9 +776,11 @@ bot.command('alerts', (ctx) => {
   const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
   if (arg === 'off') {
     wu.enabled = false;
+    upsertWanderUser(userId, { name: wu.name, enabled: false });
     ctx.reply(`📍 WanderGuide disabled for ${wu.name}.`);
   } else if (arg === 'on') {
     wu.enabled = true;
+    upsertWanderUser(userId, { name: wu.name, enabled: true });
     ctx.reply(`📍 WanderGuide enabled for ${wu.name}! Share your live location in this DM to start receiving alerts.${wu.pushoverKey ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
   } else {
     ctx.reply(`📍 WanderGuide for ${wu.name}: ${wu.enabled ? 'ON' : 'OFF'}\nPushover: ${wu.pushoverKey ? 'registered' : 'not set'}\nLocation: ${wu.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
@@ -774,8 +796,8 @@ bot.command('register', (ctx) => {
   const key = ctx.message.text.replace('/register', '').trim();
   if (!key) return ctx.reply('Usage: /register YOUR_PUSHOVER_USER_KEY\n\nGet your key from the Pushover app.');
   wu.pushoverKey = key;
-  // Also add to the pushoverUsers map for web app registration
   pushoverUsers.set(wu.name.toLowerCase(), key);
+  upsertWanderUser(userId, { name: wu.name, pushoverKey: key });
   ctx.reply(`✅ Pushover registered for ${wu.name}! You'll receive native push notifications for proximity alerts.`);
 });
 
@@ -836,7 +858,7 @@ bot.command('clearpois', (ctx) => {
   trackGroup(ctx);
   if (!isAdmin(ctx)) return ctx.reply('Only Eran can change WanderGuide settings.');
   const count = require('./poi-database').customPois.length;
-  require('./poi-database').customPois.length = 0;
+  clearCustomPois();
   ctx.reply(`🗑️ Cleared ${count} custom POI(s). Static database (${require('./poi-database').getAllPois().length} POIs) unchanged.`);
 });
 
@@ -1001,9 +1023,19 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// Launch
-bot.launch();
-console.log('🤖 Korea Trip Bot is running! (with web search + scheduled messages)');
+// Launch with database initialization
+async function start() {
+  try {
+    await initDB();
+    await loadCustomPois();
+    await loadWanderUsers();
+  } catch (err) {
+    console.error('DB init error (continuing without persistence):', err.message);
+  }
+  bot.launch();
+  console.log('🤖 Korea Trip Bot is running! (with web search + scheduled messages + PostgreSQL persistence)');
+}
+start();
 
 // Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
