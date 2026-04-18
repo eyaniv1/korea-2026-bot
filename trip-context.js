@@ -34,12 +34,14 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - Morning: Naksan Park — city views
 - AM: Ihwa Mural Village
 - Lunch: Myeongdong Kyoja — Michelin noodles (walk-in, expect queue)
+- PM: Deoksugung Palace — stone wall walk (optional, on the way)
 - PM: Seochon — cafes, galleries
 - PM: Ssamjigil — Insadong crafts
 - PM: Themed Cafe (Poop Cafe or animal cafe in Insadong area)
 - Evening: Jogyesa Temple — lotus lanterns (up for Buddha's Birthday season)
 - Evening: Abijou Clinic — Korean Aqua Peel facial (walk-in, ~30 min, ~$25-75)
 - Dinner: Maple Tree House (Itaewon) — Korean BBQ. Call +82 2-790-7977
+- Night option: DDP (Dongdaemun Design Plaza) — stunning at night with LED rose garden
 - **Hotel:** Amid Hotel Seoul
 
 ### 25/4 (Sat) — Suwon Fortress + Tower + Jungsik
@@ -60,6 +62,7 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - Optional: Jeju Loveland — quirky sculpture park (~30 min, 9,000 won)
 - PM: Saryeoni Forest Trail (10 km, 2-3 hrs, +222m) — ⚠️ May be closed until May 15, check visitjeju.net
 - Dinner: Dombedon — Michelin black pork BBQ. Call +82 64-753-0008
+- Evening: Jeju Dongmun Market — food market walk (near hotel)
 - **Hotel:** Grabel Hotel Jeju, Jeju City
 
 ### 27/4 (Mon) — Jeju E-Bike + Sunrise Peak
@@ -71,7 +74,8 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 
 ### 28/4 (Tue) — Jeju Coastal Day
 - Morning: Olle Trail Section 7 — start at Oedolgae (17.6 km full / 8-10 km partial, +288m)
-- Midday: Daepo Jusangjeolli Cliff — basalt columns (2,000 won)
+- Midday: Jeongbang Waterfall — falls directly into the sea (20 min stop)
+- PM: Daepo Jusangjeolli Cliff — basalt columns (2,000 won)
 - PM: O'sulloc Tea Museum — free entry, green tea tastings
 - PM: Hyeopjae Beach
 - Return rental car (keep overnight, return at Jeju Airport tomorrow morning before flight)
@@ -93,6 +97,7 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - 11:30 AM: Bulguksa Temple (UNESCO) — free entry
 - 1:30 PM: Seokguram Grotto — forest walk up (3 km, 1-1.5 hrs, +382m, 5,000 won)
 - 5:30 PM: Hwangridan-gil — dinner
+- 6:30 PM: Daereungwon Tomb Complex + Chomseongdae Observatory (walk from Hwangridan-gil)
 - 7:15 PM: Wolji Pond — night reflections (after sunset ~6:55 PM, 3,000 won)
 - Driver takes group back to Busan (~1 hr, arrive ~9:00-9:30 PM)
 - **Hotel:** L7 Haeundae by Lotte
