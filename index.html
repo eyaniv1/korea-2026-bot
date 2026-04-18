@@ -649,14 +649,18 @@ function build(){
     </div>
 
     <div class="m-item">
-      <div class="m-title">Summary per person</div>
+      <div class="m-title">Setup steps — do in any order</div>
       <div class="m-desc">
         <table style="width:100%;font-size:13px;border-collapse:collapse">
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Telegram</td><td style="padding:6px">DM bot → /alerts on → share live location</td></tr>
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Pushover</td><td style="padding:6px">Install → copy user key → /register in Telegram or web chat</td></tr>
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888">Siri (optional)</td><td style="padding:6px">Settings → Notifications → Pushover → Announce ON</td></tr>
-          <tr><td style="padding:6px;color:#888">Daily</td><td style="padding:6px">Re-share live location every 8 hours in Telegram</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888;white-space:nowrap">Step</td><td style="padding:6px;color:#888">Where</td><td style="padding:6px;color:#888">Required?</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">register pushover name KEY</td><td style="padding:6px">Web chat OR Telegram</td><td style="padding:6px">Yes — for push notifications</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">alerts on</td><td style="padding:6px">Web chat OR Telegram</td><td style="padding:6px">Yes — enables alerts</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">Share live location</td><td style="padding:6px">Telegram DM only</td><td style="padding:6px">Yes — for background GPS</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">Siri Announce Notifications</td><td style="padding:6px">iPhone Settings</td><td style="padding:6px">Optional — audio readout</td></tr>
+          <tr><td style="padding:6px">Re-share live location</td><td style="padding:6px">Telegram</td><td style="padding:6px">Every 8 hours</td></tr>
         </table>
+        <br>
+        <b>Note:</b> The order doesn't matter. The system auto-creates your user on the first step and merges all subsequent steps into the same account by name. Telegram is only needed for background GPS tracking (live location sharing). Everything else can be done from the web chat.
       </div>
     </div>
 
