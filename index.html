@@ -898,14 +898,22 @@ async function sendChat(){
 
   // Handle local WanderGuide commands (before image processing)
   const lower=msg.toLowerCase().trim();
-  if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'){
-    setWanderSetting('enabled',true);
-    addChatMsg('bot','📍 WanderGuide alerts <b>enabled</b>. Radius: '+getWanderSetting('radius',DEFAULT_RADIUS)+'m, cooldown: '+Math.round(getWanderSetting('cooldown',DEFAULT_COOLDOWN)/60000)+'min.');
-    return;
-  }
-  if(lower==='alerts off'||lower==='turn alerts off'||lower==='disable alerts'){
-    setWanderSetting('enabled',false);
-    addChatMsg('bot','📍 WanderGuide alerts <b>disabled</b>.');
+  if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'||lower==='alerts off'||lower==='turn alerts off'||lower==='disable alerts'){
+    const enable=lower.includes('on')||lower.includes('enable');
+    try{
+      // Get user name from pushover registration or session
+      const regRes=await fetch(API_BASE+'/api/pushover/users');
+      const names=await regRes.json();
+      if(names.length===0){addChatMsg('bot','❌ No registered users. Register first with: register pushover [name] [key]');return;}
+      // Toggle for the first matching user (or use session-linked user)
+      const res=await fetch(API_BASE+'/api/wanderguide/toggle',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userName:names[0],enabled:enable})
+      });
+      const data=await res.json();
+      if(data.success)addChatMsg('bot',`📍 WanderGuide alerts <b>${enable?'enabled':'disabled'}</b> for ${data.userId?'user':'all'}.`);
+      else addChatMsg('bot','❌ '+data.error);
+    }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
     return;
   }
   const radiusMatch=lower.match(/(?:set )?radius (?:to )?(\d+)/);

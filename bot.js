@@ -860,11 +860,12 @@ bot.command('deltip', (ctx) => {
 // ===== WANDERGUIDE COMMANDS =====
 
 // /alerts on|off — toggle proximity alerts (per user)
-bot.command('alerts', (ctx) => {
+bot.command('alerts', async (ctx) => {
   trackGroup(ctx);
   const userId = ctx.from.id;
+  const userName = ctx.from.first_name || 'Someone';
   let user = getUserByTelegramId(userId);
-  user.name = ctx.from.first_name || 'Someone';
+  if (!user) user = await registerUser({ name: userName, telegramUserId: userId });
   const arg = ctx.message.text.replace('/alerts', '').trim().toLowerCase();
   if (arg === 'off') {
     user.enabled = false;
@@ -880,18 +881,15 @@ bot.command('alerts', (ctx) => {
 });
 
 // /register <pushover_key> — link Pushover to this Telegram user
-bot.command('register', (ctx) => {
+bot.command('register', async (ctx) => {
   trackGroup(ctx);
   const userId = ctx.from.id;
-  let user = getUserByTelegramId(userId);
-  user.name = ctx.from.first_name || 'Someone';
+  const userName = ctx.from.first_name || 'Someone';
   const key = ctx.message.text.replace('/register', '').trim();
   if (!key) return ctx.reply('Usage: /register YOUR_PUSHOVER_USER_KEY\n\nGet your key from the Pushover app.');
-  user.pushover_key = key;
-    // pushover handled by registerUser
-  registerUser({ name: user.name, pushoverKey: key });
+  const user = await registerUser({ name: userName, telegramUserId: userId, pushoverKey: key });
   ctx.reply(`✅ Pushover registered for ${user.name}! Sending a test notification now...`);
-  sendPushover(key, 'WanderGuide', `Welcome ${user.name}! Push notifications are working. You'll be alerted when near interesting places.`);
+  sendPushover(key, 'WanderGuide', `Welcome ${user.name}! Push notifications are working.`);
 });
 
 // /users — list all registered users
