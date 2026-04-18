@@ -1041,31 +1041,31 @@ bot.command('status', (ctx) => {
 bot.command('help', (ctx) => {
   trackGroup(ctx);
   const admin = isAdmin(ctx);
-  let text = `*Everyone:*\n` +
-    `/alerts on/off — enable/disable your proximity alerts\n` +
-    `/register <pushover_key> — register for push notifications\n` +
-    `/nearby — show POIs within 1km\n` +
-    `/status — your WanderGuide status\n` +
-    `/plan — today's itinerary\n` +
-    `/translate <text> — translate to Korean\n` +
-    `/tips — show curated tips\n` +
-    `/users — list registered users\n` +
-    `/help — this message\n`;
+  let text = `EVERYONE:\n` +
+    `/alerts on/off - enable/disable proximity alerts\n` +
+    `/register YOUR_KEY - register for push notifications\n` +
+    `/nearby - show POIs within 1km\n` +
+    `/status - your WanderGuide status\n` +
+    `/plan - today's itinerary\n` +
+    `/translate TEXT - translate to Korean\n` +
+    `/tips - show curated tips\n` +
+    `/users - list registered users\n` +
+    `/help - this message\n`;
   if (admin) {
-    text += `\n*Admin:*\n` +
-    `/alertsall on/off — toggle alerts for ALL users\n` +
-    `/broadcast <msg> — push message to everyone\n` +
-    `/radius <meters> — set alert distance (default 300)\n` +
-    `/cooldown <min> — time between alerts (default 20)\n` +
-    `/realert <hrs> — re-alert same POI (default 4)\n` +
-    `/addpoi <lat> <lng> <desc> — add custom POI\n` +
-    `/clearpois — remove all custom POIs\n` +
-    `/deleteuser <name> — remove a user\n` +
-    `/quiet, /normal, /chatty — response mode\n` +
-    `/schedule on/off — toggle daily messages\n` +
-    `/addtip, /deltip — manage tips\n`;
+    text += `\nADMIN:\n` +
+    `/alertsall on/off - toggle alerts for ALL users\n` +
+    `/broadcast MSG - push message to everyone\n` +
+    `/radius METERS - set alert distance (default 300)\n` +
+    `/cooldown MIN - time between alerts (default 20)\n` +
+    `/realert HRS - re-alert same POI (default 4)\n` +
+    `/addpoi LAT LNG DESC - add custom POI\n` +
+    `/clearpois - remove all custom POIs\n` +
+    `/deleteuser NAME - remove a user\n` +
+    `/quiet, /normal, /chatty - response mode\n` +
+    `/schedule on/off - toggle daily messages\n` +
+    `/addtip, /deltip - manage tips\n`;
   }
-  ctx.reply(text, { parse_mode: 'Markdown' });
+  ctx.reply(text);
 });
 
 // Handle /start command
