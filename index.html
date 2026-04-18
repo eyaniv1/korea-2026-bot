@@ -989,6 +989,8 @@ async function sendChat(){
   }
   if(lower==='nearby'||lower==='/nearby'){
     if(!userLat||!userLng){addChatMsg('bot','📍 GPS not available. Allow location permission and try again.');return;}
+    // Refresh POI database from server first
+    await fetchPois();
     const nearby=poiDatabase.map(p=>({...p,dist:Math.round(haversine(userLat,userLng,p.lat,p.lng))})).filter(p=>p.dist<=1000).sort((a,b)=>a.dist-b.dist).slice(0,8);
     if(nearby.length===0){addChatMsg('bot','No known POIs within 1km.');return;}
     const list=nearby.map((p,i)=>`${i+1}. <b>${p.name}</b> (${p.dist}m)<br>   ${(p.desc||'').substring(0,80)}...`).join('<br><br>');
