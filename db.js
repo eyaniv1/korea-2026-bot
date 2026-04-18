@@ -82,28 +82,62 @@ async function getEnabledUsers() {
 
 async function upsertUser(data) {
   // data: { name, pushoverKey, telegramUserId, webSessionId, enabled, lat, lng }
-  const result = await pool.query(`
-    INSERT INTO users (name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-    ON CONFLICT (name) DO UPDATE SET
-      pushover_key = COALESCE($2, users.pushover_key),
-      telegram_user_id = COALESCE($3, users.telegram_user_id),
-      web_session_id = COALESCE($4, users.web_session_id),
-      enabled = COALESCE($5, users.enabled),
-      lat = COALESCE($6, users.lat),
-      lng = COALESCE($7, users.lng),
-      updated_at = NOW()
-    RETURNING *
-  `, [
-    data.name,
-    data.pushoverKey || null,
-    data.telegramUserId || null,
-    data.webSessionId || null,
-    data.enabled ?? null,
-    data.lat || null,
-    data.lng || null
-  ]);
-  return result.rows[0];
+  try {
+    // First try to find by telegram_user_id if provided (in case name changed)
+    if (data.telegramUserId) {
+      const existing = await pool.query('SELECT * FROM users WHERE telegram_user_id = $1', [data.telegramUserId]);
+      if (existing.rows[0]) {
+        // Update existing user
+        const result = await pool.query(`
+          UPDATE users SET
+            name = COALESCE($1, name),
+            pushover_key = COALESCE($2, pushover_key),
+            web_session_id = COALESCE($3, web_session_id),
+            enabled = COALESCE($4, enabled),
+            lat = COALESCE($5, lat),
+            lng = COALESCE($6, lng),
+            updated_at = NOW()
+          WHERE telegram_user_id = $7
+          RETURNING *
+        `, [
+          data.name || null,
+          data.pushoverKey || null,
+          data.webSessionId || null,
+          data.enabled ?? null,
+          data.lat || null,
+          data.lng || null,
+          data.telegramUserId
+        ]);
+        return result.rows[0];
+      }
+    }
+    // Insert new user
+    const result = await pool.query(`
+      INSERT INTO users (name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      ON CONFLICT (name) DO UPDATE SET
+        pushover_key = COALESCE($2, users.pushover_key),
+        telegram_user_id = COALESCE($3, users.telegram_user_id),
+        web_session_id = COALESCE($4, users.web_session_id),
+        enabled = COALESCE($5, users.enabled),
+        lat = COALESCE($6, users.lat),
+        lng = COALESCE($7, users.lng),
+        updated_at = NOW()
+      RETURNING *
+    `, [
+      data.name,
+      data.pushoverKey || null,
+      data.telegramUserId || null,
+      data.webSessionId || null,
+      data.enabled ?? null,
+      data.lat || null,
+      data.lng || null
+    ]);
+    return result.rows[0];
+  } catch (err) {
+    console.error('upsertUser error:', err.message, 'data:', JSON.stringify(data));
+    throw err;
+  }
 }
 
 async function updateUserLocation(name, lat, lng) {
