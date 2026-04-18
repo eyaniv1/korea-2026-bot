@@ -723,17 +723,17 @@ bot.on('location', async (ctx) => {
   // Update general location store
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Update per-user WanderGuide location (memory + DB)
+  // Update unified user location — auto-register if needed
   let user = getUserByTelegramId(userId);
+  if (!user) user = await registerUser({ name: userName, telegramUserId: userId, lat: latitude, lng: longitude });
   user.lat = latitude;
   user.lng = longitude;
-  user.name = userName;
-  db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location update error:', err.message));
+  db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location error:', err.message));
 
-  // Check per-user proximity alerts
-  await checkUserProximity(userId);
+  // Check proximity alerts if enabled
+  if (user.enabled) await checkUserProximity(user.name);
 
-  // Only respond conversationally for one-time location shares in non-DM chats
+  // Respond
   if (!isLive && ctx.chat.type !== 'private') {
     addMessage(chatId, 'user',
       `${userName} shared their location: latitude ${latitude}, longitude ${longitude}. ` +
@@ -748,8 +748,7 @@ bot.on('location', async (ctx) => {
       console.error('Location error:', err.message);
     }
   } else if (!isLive && ctx.chat.type === 'private') {
-    // In DM, just acknowledge briefly
-    await ctx.reply(`📍 Got your location, ${userName}. WanderGuide is ${user.enabled ? 'active — I\'ll alert you when you\'re near interesting places.' : 'off. Send /alerts on to enable.'}`);
+    await ctx.reply(`📍 Got your location, ${userName}. WanderGuide is ${user.enabled ? 'active' : 'off. Send /alerts on to enable.'}`);
   }
 });
 
@@ -763,14 +762,13 @@ bot.on('edited_message', async (ctx) => {
 
   lastLocations.set(chatId, { latitude, longitude, from: userName, time: new Date().toISOString() });
 
-  // Update unified user location
+  // Update unified user location — auto-register if needed
   let user = getUserByTelegramId(userId);
-  if (user) {
-    user.lat = latitude;
-    user.lng = longitude;
-    db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location error:', err.message));
-    if (user.enabled) await checkUserProximity(user.name);
-  }
+  if (!user) user = await registerUser({ name: userName, telegramUserId: userId, lat: latitude, lng: longitude });
+  user.lat = latitude;
+  user.lng = longitude;
+  db.updateUserLocation(user.name, latitude, longitude).catch(err => console.error('DB location error:', err.message));
+  if (user.enabled) await checkUserProximity(user.name);
 });
 
 // ===== ADMIN COMMANDS =====
