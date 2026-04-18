@@ -443,6 +443,9 @@ function goPage(idx){
         else m.fitBounds(b);
       }
     },50);
+    // Restore saved tab
+    const savedTab=localStorage.getItem('lastTab_'+dayNum);
+    if(savedTab)switchTab(dayNum,savedTab);
   }
   window.scrollTo(0,0);
 }
@@ -450,6 +453,7 @@ function goPage(idx){
 function switchTab(dayNum,tabName){
   document.querySelectorAll(`[data-day="${dayNum}"] .tab-btn`).forEach(b=>b.classList.toggle('active',b.dataset.tab===tabName));
   document.querySelectorAll(`[data-day="${dayNum}"] .tab-content`).forEach(c=>c.classList.toggle('active',c.dataset.tab===tabName));
+  localStorage.setItem('lastTab_'+dayNum,tabName);
   if(tabName==='itinerary'){
     setTimeout(()=>{
       const m=mapInstances[dayNum];
@@ -828,6 +832,7 @@ function toggleChat(){
   document.getElementById('chat-panel').classList.toggle('open',chatOpen);
   document.getElementById('chat-fab').style.display=chatOpen?'none':'flex';
   document.querySelector('.bottom-nav').style.display=chatOpen?'none':'flex';
+  localStorage.setItem('chatOpen',chatOpen?'1':'0');
   if(chatOpen){
     const msgs=document.getElementById('chat-messages');
     setTimeout(()=>{msgs.scrollTop=msgs.scrollHeight},50);
@@ -1238,6 +1243,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Restore last viewed page
   const lastPage=parseInt(localStorage.getItem('lastPage'));
   if(lastPage&&lastPage>0)setTimeout(()=>goPage(lastPage),200);
+  // Restore chat open state
+  if(localStorage.getItem('chatOpen')==='1')setTimeout(()=>toggleChat(),300);
   startGPS();
   fetchPois();
   // Re-fetch POIs every 5 min (picks up newly added POIs)
