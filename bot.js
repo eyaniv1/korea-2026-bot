@@ -412,13 +412,8 @@ async function checkUserProximity(userName) {
     // 2. Send Telegram DM if user has a telegram ID
     if (user.telegram_user_id) {
       try {
-        const msg = `📍 *Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!*
-
-${poi.desc}
-
-🗺️ [Open in Maps](${mapsUrl})`;
-        await bot.telegram.sendMessage(user.telegram_user_id, msg, { parse_mode: 'Markdown' })
-          .catch(() => bot.telegram.sendMessage(user.telegram_user_id, msg.replace(/[*_\[\]()\/]/g, '')));
+        const plainMsg = `📍 Hey ${user.name}! You're ${poi.distance}m from ${poi.name}!\n\n${poi.desc}\n\n🗺️ Open in Maps: ${mapsUrl}`;
+        await bot.telegram.sendMessage(user.telegram_user_id, plainMsg);
       } catch (err) {
         console.error(`Telegram alert error for ${user.name}:`, err.message);
       }
