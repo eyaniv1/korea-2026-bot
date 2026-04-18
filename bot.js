@@ -1015,24 +1015,24 @@ bot.command('addpoi', (ctx) => {
 // /status — show current bot config
 bot.command('status', (ctx) => {
   trackGroup(ctx);
-  const userId = ctx.from.id;
-  let user = getUserByTelegramId(userId);
-  const wanderStatus = user.enabled ? '📍 ON' : '⭕ OFF';
-  const locStatus = user.lat ? `${user.lat.toFixed(4)}, ${user?.lng.toFixed(4)}` : 'not shared';
-  const pushStatus = user.pushover_key ? 'registered' : 'not set';
-  ctx.reply(
-    `⚙️ *Bot Status*\n` +
-    `• Response mode: ${settings.responseMode}\n` +
-    `• Scheduled messages: ${settings.scheduleEnabled ? 'ON' : 'OFF'}\n` +
-    `• Curated tips: ${settings.tips.length}\n` +
-    `• Active groups: ${activeGroups.size}\n` +
-    `• WanderGuide: ${wanderStatus} (radius: ${alertRadius}m, cooldown: ${alertCooldown/60000}min, re-alert: ${alertRevisitCooldown/3600000}hrs)\n` +
-    `• Your location: ${locStatus}\n` +
-    `• Pushover: ${pushStatus}\n` +
-    `• POIs in database: ${require('./poi-database').getAllPois().length}\n` +
-    `• WanderGuide users: ${users.size}`,
-    { parse_mode: 'Markdown' }
-  );
+  try {
+    const userId = ctx.from.id;
+    const user = getUserByTelegramId(userId);
+    const wanderStatus = user?.enabled ? 'ON' : 'OFF';
+    const locStatus = user?.lat ? `${user.lat.toFixed(4)}, ${user.lng.toFixed(4)}` : 'not shared';
+    const pushStatus = user?.pushover_key ? 'registered' : 'not set';
+    ctx.reply(
+      `Status:\n` +
+      `WanderGuide: ${wanderStatus} (radius: ${alertRadius}m, cooldown: ${alertCooldown/60000}min, re-alert: ${alertRevisitCooldown/3600000}hrs)\n` +
+      `Location: ${locStatus}\n` +
+      `Pushover: ${pushStatus}\n` +
+      `POIs: ${require('./poi-database').getAllPois().length}\n` +
+      `Users: ${users.size}`
+    );
+  } catch (err) {
+    console.error('Status error:', err.message);
+    ctx.reply('Error getting status.');
+  }
 });
 
 // /help — show all commands
