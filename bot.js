@@ -904,6 +904,7 @@ bot.command('deltip', (ctx) => {
 // /alerts on|off — toggle proximity alerts (per user)
 bot.command('alerts', async (ctx) => {
   trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Please use the web chat app to manage alerts.\nhttps://eyaniv1.github.io/korea-2026-bot/');
   try {
     const userId = ctx.from.id;
     const userName = ctx.from.first_name || 'Someone';
@@ -917,19 +918,20 @@ bot.command('alerts', async (ctx) => {
     } else if (arg === 'on') {
       user.enabled = true;
       await registerUser({ name: user.name, enabled: true });
-      await ctx.reply(`📍 WanderGuide enabled for ${user.name}! Share your live location in this DM to start receiving alerts.${user.pushover_key ? '' : '\n\nTip: Send /register YOUR_PUSHOVER_KEY to get native push notifications.'}`);
+      await ctx.reply(`📍 WanderGuide enabled for ${user.name}!`);
     } else {
-      await ctx.reply(`📍 WanderGuide for ${user.name}: ${user.enabled ? 'ON' : 'OFF'}\nPushover: ${user.pushover_key ? 'registered' : 'not set'}\nLocation: ${user.lat ? 'tracking' : 'not shared'}\n\nUsage: /alerts on or /alerts off`);
+      await ctx.reply(`📍 WanderGuide for ${user.name}: ${user.enabled ? 'ON' : 'OFF'}\nPushover: ${user.pushover_key ? 'registered' : 'not set'}\nLocation: ${user.lat ? 'tracking' : 'not shared'}`);
     }
   } catch (err) {
     console.error('Alerts command error:', err.message);
-    await ctx.reply('❌ Error processing command. Try again.');
+    await ctx.reply('Error processing command. Try again.');
   }
 });
 
-// /register <pushover_key> — link Pushover to this Telegram user
+// /register — redirect non-admin to web chat
 bot.command('register', async (ctx) => {
   trackGroup(ctx);
+  if (!isAdmin(ctx)) return ctx.reply('Please use the web chat app to register.\nhttps://eyaniv1.github.io/korea-2026-bot/\n\nType: register pushover YOUR_NAME YOUR_KEY');
   const userId = ctx.from.id;
   const userName = ctx.from.first_name || 'Someone';
   const key = ctx.message.text.replace('/register', '').trim();
@@ -1090,14 +1092,15 @@ bot.command('status', (ctx) => {
 bot.command('help', (ctx) => {
   trackGroup(ctx);
   const admin = isAdmin(ctx);
-  let text = `EVERYONE:\n` +
-    `/alerts on/off - enable/disable proximity alerts\n` +
-    `/register YOUR_KEY - register for push notifications\n` +
-    `/nearby - show POIs within 1km\n` +
+  let text = `TELEGRAM:\n` +
+    `Share live location here - that's all you need!\n` +
+    `All other commands use the web chat app:\n` +
+    `https://eyaniv1.github.io/korea-2026-bot/\n\n` +
+    `AVAILABLE HERE:\n` +
+    `/nearby - show POIs within range\n` +
     `/status - your WanderGuide status\n` +
     `/plan - today's itinerary\n` +
     `/translate TEXT - translate to Korean\n` +
-    `/tips - show curated tips\n` +
     `/users - list registered users\n` +
     `/help - this message\n`;
   if (admin) {

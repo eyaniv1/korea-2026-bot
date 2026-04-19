@@ -674,18 +674,17 @@ function build(){
     </div>
 
     <div class="m-item">
-      <div class="m-title">Setup steps — do in any order</div>
+      <div class="m-title">Setup steps (do in any order)</div>
       <div class="m-desc">
         <table style="width:100%;font-size:13px;border-collapse:collapse">
           <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px;color:#888;white-space:nowrap">Step</td><td style="padding:6px;color:#888">Where</td><td style="padding:6px;color:#888">Required?</td></tr>
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">register pushover name KEY</td><td style="padding:6px">Web chat OR Telegram</td><td style="padding:6px">Yes — for push notifications</td></tr>
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">alerts on</td><td style="padding:6px">Web chat OR Telegram</td><td style="padding:6px">Yes — enables alerts</td></tr>
-          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">Share live location</td><td style="padding:6px">Telegram DM only</td><td style="padding:6px">Yes — for background GPS</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">register pushover NAME KEY</td><td style="padding:6px"><b>Web chat</b></td><td style="padding:6px">Yes — registers you + enables push</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">alerts on</td><td style="padding:6px"><b>Web chat</b></td><td style="padding:6px">Yes — enables proximity alerts</td></tr>
+          <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">Share live location</td><td style="padding:6px"><b>Telegram DM</b></td><td style="padding:6px">Yes — background GPS tracking</td></tr>
           <tr style="border-bottom:1px solid #2a2a4a"><td style="padding:6px">Siri Announce Notifications</td><td style="padding:6px">iPhone Settings</td><td style="padding:6px">Optional — audio readout</td></tr>
-          <tr><td style="padding:6px">Re-share live location</td><td style="padding:6px">Telegram</td><td style="padding:6px">Every 8 hours</td></tr>
         </table>
         <br>
-        <b>Note:</b> The order doesn't matter. The system auto-creates your user on the first step and merges all subsequent steps into the same account by name. Telegram is only needed for background GPS tracking (live location sharing). Everything else can be done from the web chat.
+        <b>Important:</b> Registration and alert commands must be done in the <b>web chat</b> (tap 💬). Telegram is only for sharing your live location — nothing else. The order of steps doesn't matter.
       </div>
     </div>
 
@@ -933,18 +932,15 @@ async function sendChat(){
   const lower=msg.toLowerCase().trim();
   if(lower==='alerts on'||lower==='turn alerts on'||lower==='enable alerts'||lower==='alerts off'||lower==='turn alerts off'||lower==='disable alerts'){
     const enable=lower.includes('on')||lower.includes('enable');
+    const myName=localStorage.getItem('wanderguide_name');
+    if(!myName){addChatMsg('bot','❌ Register first with: <b>register pushover YOUR_NAME YOUR_KEY</b>');return;}
     try{
-      // Get user name from pushover registration or session
-      const regRes=await fetch(API_BASE+'/api/pushover/users');
-      const names=await regRes.json();
-      if(names.length===0){addChatMsg('bot','❌ No registered users. Register first with: register pushover [name] [key]');return;}
-      // Toggle for the first matching user (or use session-linked user)
       const res=await fetch(API_BASE+'/api/wanderguide/toggle',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userName:names[0],enabled:enable})
+        body:JSON.stringify({userName:myName,enabled:enable})
       });
       const data=await res.json();
-      if(data.success)addChatMsg('bot',`📍 WanderGuide alerts <b>${enable?'enabled':'disabled'}</b> for ${data.userId?'user':'all'}.`);
+      if(data.success)addChatMsg('bot',`📍 WanderGuide alerts <b>${enable?'enabled':'disabled'}</b> for <b>${myName}</b>.`);
       else addChatMsg('bot','❌ '+data.error);
     }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
     return;
