@@ -1002,7 +1002,7 @@ async function sendChat(){
         body:JSON.stringify({name:name||sessionId,userKey:key,sendTest:true})
       });
       const data=await res.json();
-      if(data.success)addChatMsg('bot',`✅ Pushover registered for <b>${data.registeredName}</b>! A test notification was sent. Registered users: ${data.users.join(', ')}`);
+      if(data.success){localStorage.setItem('wanderguide_name',data.registeredName);addChatMsg('bot',`✅ Pushover registered for <b>${data.registeredName}</b>! A test notification was sent. Registered users: ${data.users.join(', ')}`)}
       else addChatMsg('bot','❌ Failed to register. Check your user key.');
     }catch(e){addChatMsg('bot','❌ Could not connect to server. Try again.');}
     return;
@@ -1263,7 +1263,8 @@ async function fetchPois(){
 let lastAlertPollTime=Date.now();
 async function pollAlerts(){
   try{
-    const res=await fetch(API_BASE+'/api/alerts?since='+lastAlertPollTime);
+    const myName=localStorage.getItem('wanderguide_name')||'';
+    const res=await fetch(API_BASE+'/api/alerts?since='+lastAlertPollTime+(myName?'&user='+encodeURIComponent(myName):''));
     const alerts=await res.json();
     for(const a of alerts){
       addChatMsg('bot',a.text);

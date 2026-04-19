@@ -268,7 +268,7 @@ app.post('/api/push', (req, res) => {
     // Broadcast to all registered Pushover users
     sendPushoverToAll('Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
     // Also add to alert queue for web chat
-    alertQueue.push({ text: `📢 <b>Broadcast:</b> ${message}`, time: Date.now() });
+    for(const u of users.values()) addToAlertQueue(u.name, `📢 <b>Broadcast:</b> ${message}`);
     if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
     res.json({ success: true, sentTo: getAllUserNames() });
   } else {
@@ -277,9 +277,8 @@ app.post('/api/push', (req, res) => {
     const key = u?.pushover_key;
     if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${getAllUserNames().join(', ')}` });
     sendPushover(key, 'Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
-    // Add to alert queue so it appears in recipient's web chat
-    alertQueue.push({ text: `💬 <b>Message from ${req.body.from || 'someone'}:</b> ${message}`, time: Date.now() });
-    if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
+    // Add to recipient's alert queue only
+    addToAlertQueue(to.toLowerCase(), `💬 <b>Message from ${req.body.from || 'someone'}:</b> ${message}`);
     res.json({ success: true, sentTo: to });
   }
 });
@@ -343,8 +342,17 @@ app.post('/api/wanderguide/settings', async (req, res) => {
 // Alert queue endpoint — web app polls this for proximity alerts
 app.get('/api/alerts', (req, res) => {
   const since = parseInt(req.query.since) || 0;
-  const alerts = alertQueue.filter(a => a.time > since);
-  res.json(alerts);
+  const userName = req.query.user;
+  if (userName) {
+    // Per-user alerts
+    const q = getAlertQueue(userName.toLowerCase());
+    res.json(q.filter(a => a.time > since));
+  } else {
+    // Return all users' alerts combined (backwards compatibility)
+    const all = [];
+    for (const q of alertQueues.values()) all.push(...q);
+    res.json(all.filter(a => a.time > since).sort((a, b) => a.time - b.time));
+  }
 });
 
 // Register Pushover user endpoint
@@ -394,8 +402,17 @@ let alertRadius = 150;
 let alertCooldown = 5 * 60 * 1000;
 let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 
-// Alert queue for web app display
-const alertQueue = [];
+// Alert queue for web app display — per user
+const alertQueues = new Map(); // userName → [{text, time}]
+function getAlertQueue(userName) {
+  if (!alertQueues.has(userName)) alertQueues.set(userName, []);
+  return alertQueues.get(userName);
+}
+function addToAlertQueue(userName, text) {
+  const q = getAlertQueue(userName);
+  q.push({ text, time: Date.now() });
+  if (q.length > 50) q.splice(0, q.length - 50);
+}
 
 const proximityLock = new Set(); // prevent concurrent checks for same user
 async function checkUserProximity(userName) {
@@ -438,12 +455,8 @@ async function checkUserProximity(userName) {
       }
     }
 
-    // 3. Add to alert queue for web app display
-    alertQueue.push({
-      text: `📍 <b>${user.name} is ${poi.distance}m from ${poi.name}!</b> <span style="color:#888;font-size:12px">${timeStr}</span><br>${poi.desc || ''}<br><a href="${mapsUrl}" target="_blank">🗺️ Open in Maps</a>`,
-      time: now
-    });
-    if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
+    // 3. Add to THIS user's alert queue only
+    addToAlertQueue(userName, `📍 <b>You're ${poi.distance}m from ${poi.name}!</b> <span style="color:#888;font-size:12px">${timeStr}</span><br>${poi.desc || ''}<br><a href="${mapsUrl}" target="_blank">🗺️ Open in Maps</a>`);
 
     // Only one alert at a time per user
     break;
@@ -954,7 +967,7 @@ bot.command('broadcast', (ctx) => {
   const msg = ctx.message.text.replace('/broadcast', '').trim();
   if (!msg) return ctx.reply('Usage: /broadcast Your message here');
   sendPushoverToAll('Trip Message', msg);
-  alertQueue.push({ text: `📢 <b>Broadcast:</b> ${msg}`, time: Date.now() });
+  for(const u of users.values()) addToAlertQueue(u.name, `📢 <b>Broadcast:</b> ${msg}`);
   ctx.reply(`📢 Broadcast sent to ${users.size} users: "${msg}"`);
 });
 
