@@ -300,19 +300,44 @@ project-root/
 - 8:00 PM local time — evening reminder (tomorrow's plan)
 - 10:00 PM local time — photo prompt
 
-### Express API
-- `POST /api/chat` — web app chat endpoint, per-user sessions via `X-Session-Id` header. Handles natural language POI add/remove by instructing Claude to emit JSON commands in responses.
-- `GET /api/pois` — returns full POI database (static + custom) for web app proximity checks
-- `POST /api/pois` — add a custom POI (name, lat, lng, desc)
-- `DELETE /api/pois` — clear all custom POIs
-- `GET /api/broadcasts` — returns scheduled broadcast messages since a given timestamp
-- `GET /api/health` — health check (POI count, session count)
-- CORS enabled for cross-origin requests from GitHub Pages
+### Express API (Full Endpoint List)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/chat` | POST | AI chat (per-user sessions, supports text + image) |
+| `/api/pois` | GET | Full POI database (static + custom) |
+| `/api/pois` | POST | Add custom POI |
+| `/api/pois` | DELETE | Clear all custom POIs |
+| `/api/alerts` | GET | Proximity alerts since timestamp |
+| `/api/broadcasts` | GET | Scheduled messages since timestamp |
+| `/api/push` | POST | Send Pushover to @user or broadcast to all |
+| `/api/pushover/register` | POST | Register Pushover key (with test notification) |
+| `/api/pushover/users` | GET | List registered user names |
+| `/api/wanderguide/register` | POST | Register WanderGuide user (for native apps) |
+| `/api/wanderguide/location` | POST | Send GPS coordinates (for native apps) |
+| `/api/wanderguide/toggle` | POST | Enable/disable alerts for a user |
+| `/api/wanderguide/settings` | POST | Update global radius/cooldown/revisit |
+| `/api/wanderguide/status` | GET | Get user or global WanderGuide status |
+| `/api/health` | GET | Health check |
+
+Full API documentation: see `API-Reference.md` / `API-Reference.pdf`
+
+### Unified User System
+- Single `users` table in PostgreSQL: name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng
+- In-memory cache loaded from DB on startup
+- Any registration path creates/updates the same unified user record
+- Auto-registration on first interaction — order doesn't matter
+- `getUserByTelegramId()` uses String comparison for BIGINT compatibility
+
+### Pushover Integration
+- Short clean messages for Siri readout through AirPods
+- Full details sent to Telegram DM and web chat alert queue
+- `@user message` and `broadcast message` commands in web chat
+
+### Proximity Alert Architecture (Final)
+Telegram live location → Server receives GPS → Update user in DB → Check POI database (Haversine) → Cooldown check (DB) → Proximity lock → Pushover + Telegram DM + Alert queue
 
 ### Broadcast System
-- Scheduled messages (morning briefing, evening reminder, photo prompt) stored in broadcast queue
-- Web app polls `/api/broadcasts` every 60 seconds
-- New broadcasts appear in all users' web chat as 📢 messages with chime sound
+- Scheduled messages stored in broadcast queue, polled by web app every 60 seconds
 - Works even if no Telegram group is active
 
 ---
@@ -384,37 +409,53 @@ When the skill is invoked for a new trip, follow this sequence:
 - **GitHub Pages + Railway** — free/cheap hosting, auto-deploy on push
 - **DuckDuckGo links** — avoids iOS Safari Universal Links interception (Google links open Google app)
 - **Show/hide pages** — more reliable than CSS translateX for Leaflet maps
-- **localStorage for persistence** — ToDo checkboxes, chat history, WanderGuide settings, alert history all survive app close/reopen
+- **localStorage for persistence** — ToDo checkboxes, chat history, WanderGuide settings, page state, chat open/closed state, active tab per day
+- **Unified user system in PostgreSQL** — single `users` table replaces three separate systems (pushover, wanderguide, web sessions)
+- **Pushover for native notifications** — reliable push to iOS with Siri readout through AirPods, works when phone is locked
+- **Telegram for background GPS** — only app that can share live location in background on iOS
+- **Server-side proximity detection** — Telegram provides GPS, server checks against POI DB, sends Pushover + alert queue. Works with phone locked.
+- **PostgreSQL persistence** — custom POIs, user registrations, alert history, and global settings all survive server restarts
 - **Per-user sessions** — cookie/localStorage session ID gives each person their own chat context
-- **Client-side proximity checks** — faster, works offline, no server dependency for GPS
-- **POI database on server, checks on client** — best of both worlds (shared data, local processing)
 - **Voucher PDFs in git repo** — accessible from anywhere via GitHub Pages
-- **Floating chat bubble** — non-intrusive, always accessible
+- **Floating chat bubble** — non-intrusive, always accessible, hides nav bar when open
 - **Date-based navigation** (23/4 instead of Day 1) — more practical during the trip
-- **Local command interception** — WanderGuide settings processed instantly without server round-trip
-- **Broadcast system** — scheduled messages reach web app users without Telegram dependency
+- **Local command interception** — WanderGuide commands processed instantly without server round-trip
+- **Photo analysis in web chat** — Claude reads Korean signs, menus, translates from photos
+- **@user direct push + broadcast** — send Pushover messages to individuals or everyone from web chat
+- **Auto-registration** — any order of registration steps works (location, alerts, pushover). System auto-creates user on first interaction.
+- **API for native app development** — full REST API documented for third-party clients to replace Telegram+Pushover
 
 ### What Didn't Work
 - **CSS translateX page system** — breaks Leaflet map rendering on non-visible pages
 - **apple-mobile-web-app-capable** — makes all links open in same tab on iOS
 - **Google search links** — iOS Safari opens Google app instead of browser tab
-- **Google Maps place links with coordinates** — shows coordinates instead of place names
-- **Siri Announce Notifications for Telegram** — not supported despite documentation claiming otherwise
+- **Google Maps place links with coordinates** — shows coordinates instead of place names. Use `@lat,lng,17z` format instead.
+- **Siri Announce Notifications for Telegram** — not supported despite documentation claiming otherwise. Telegram never fully implemented SiriKit messaging integration.
 - **SMS alerts via TextBelt** — failed delivery to Israeli numbers
 - **Twilio free tier** — requires 10DLC registration for US numbers, complex setup
+- **Client-side proximity checking** — unreliable on iOS (browser stops when screen locked). Server-side via Telegram is the solution.
+- **Telegram Markdown in bot messages** — special characters (|, —, <, >) crash the bot. Use plain text for all Telegram replies.
+- **Railway environment variables with dotenv** — dotenv can override Railway's env vars if .env file exists. Must check `fs.existsSync('.env')` before loading dotenv.
+- **PostgreSQL BIGINT type comparison** — Telegram user IDs come as numbers, PostgreSQL returns BIGINT as strings. Use `String()` comparison.
+- **Concurrent proximity checks** — two location updates in same second can trigger duplicate alerts. Need in-memory lock (Set) per user.
 
 ### iOS Safari Gotchas
 - Needs explicit spacer divs (not just padding-bottom) for content behind fixed nav
 - `window.open()` may be blocked as popup — use `target="_blank"` on `<a>` tags instead
 - Maps need `scrollWheelZoom: false` and touch event isolation to prevent page swipe interference
 - Background JavaScript stops when screen is locked — no background processing possible
+- AudioContext requires user interaction before first play (tap once to enable)
+- `capture="environment"` on file input forces camera-only — remove for camera+gallery choice
 
 ### Bot Gotchas
 - `bot.on('text')` must be registered AFTER all `bot.command()` handlers
 - Consecutive same-role messages break Claude API — need message merging
 - Live location updates come as `edited_message`, not `message`
-- Railway redeploys clear in-memory state (custom POIs, server chat history, broadcast queue). Mitigated: WanderGuide settings, alert history, and visible chat messages are persisted client-side in localStorage.
 - Telegram group privacy must be disabled AND bot removed/re-added for it to take effect
+- All Telegram message replies should use plain text (no Markdown) to avoid parse crashes
+- Every command handler needs try/catch + null user checks — any unhandled error crashes the entire bot process
+- Railway redeploys create fresh Node.js process — all in-memory state lost. PostgreSQL provides persistence.
+- Railway environment variables: use reference variables `${{Service.VARIABLE}}` or paste values directly. Never rely on dotenv on Railway.
 
 ---
 
@@ -425,33 +466,43 @@ When the skill is invoked for a new trip, follow this sequence:
 |-----|---------|----------|
 | `chat_session` | Random session ID for per-user chat | ~20 bytes |
 | `chat_messages` | Visible chat message history (role + HTML) | Last 100 messages |
-| `wander_settings` | Radius, cooldown, re-alert, poll interval, enabled flag | ~200 bytes |
-| `wander_alerts` | POI name → last alert timestamp | Grows with POIs visited |
 | `todo_<id>` | Individual ToDo checkbox state ("1" = checked) | ~10 bytes each |
+| `lastPage` | Last viewed page index | ~5 bytes |
+| `lastTab_<dayNum>` | Last active tab per day (itinerary/hotel/transport) | ~15 bytes each |
+| `chatOpen` | Whether chat panel was open | 1 byte |
 
-### Server-side (Railway memory — lost on redeploy)
+### Server-side PostgreSQL (survives everything)
+| Table | Content | Scope |
+|-------|---------|-------|
+| `users` | name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng | Per user |
+| `custom_pois` | name, lat, lng, description, city, category, created_by | Global |
+| `alert_history` | user_name, poi_name, alerted_at | Per user per POI |
+| `settings` | key-value pairs (alertRadius, alertCooldown, alertRevisit) | Global |
+
+### Server-side memory (lost on redeploy)
 | Data | Scope | Lifetime |
 |------|-------|----------|
 | Web chat history per session | Per session ID | Until redeploy |
 | Telegram chat history per chat | Per Telegram chat ID | Until redeploy |
-| Custom POIs (added via /addpoi or web chat) | Global (all users) | Until redeploy |
 | Broadcast messages queue | Global | Last 20 messages |
-| WanderGuide Telegram alert state | Per chat ID | Until redeploy |
-| Active Telegram groups set | Global | Until redeploy |
+| Alert queue (for web app polling) | Global | Last 50 alerts |
+| In-memory user cache | Global | Reloaded from DB on startup |
 
 ### What survives Railway redeploy
 - ✅ All localStorage data (client-side)
 - ✅ Static POI database (in code)
 - ✅ Trip context / itinerary (in code)
+- ✅ Custom POIs (PostgreSQL)
+- ✅ User registrations + Pushover keys (PostgreSQL)
+- ✅ Alert history (PostgreSQL)
+- ✅ Global settings — radius, cooldown, revisit (PostgreSQL)
 - ❌ Chat conversation context (server memory)
-- ❌ Custom POIs (server memory)
 - ❌ Broadcast messages (server memory)
-
-**Practical impact:** Once code changes stop (trip starts), Railway doesn't redeploy and everything stays stable for the entire trip duration.
+- ❌ Alert queue for web app (server memory)
 
 ---
 
-## 11. Dependencies (unchanged)
+## 11. Dependencies
 
 ### npm packages
 ```json
@@ -462,6 +513,7 @@ When the skill is invoked for a new trip, follow this sequence:
   "express": "latest",
   "groq-sdk": "latest",
   "node-cron": "latest",
+  "pg": "latest",
   "telegraf": "latest"
 }
 ```
