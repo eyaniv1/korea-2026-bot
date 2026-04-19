@@ -234,8 +234,16 @@ app.post('/api/pois', (req, res) => {
   const poiLng = parseFloat(lng);
   const poiDesc = desc || description || name || 'User-added POI';
   if (isNaN(poiLat) || isNaN(poiLng)) return res.status(400).json({ error: 'Valid lat and lng numbers required' });
-  addCustomPoi(name || poiDesc.substring(0, 50), poiLat, poiLng, poiDesc);
-  res.json({ success: true, total: require('./poi-database').getAllPois().length });
+  const poiName = name || poiDesc.substring(0, 50);
+  addCustomPoi(poiName, poiLat, poiLng, poiDesc);
+  const total = require('./poi-database').getAllPois().length;
+  // Notify all Telegram users
+  for (const u of users.values()) {
+    if (u.telegram_user_id) {
+      bot.telegram.sendMessage(u.telegram_user_id, `📍 New POI added: "${poiName}" at ${poiLat.toFixed(5)}, ${poiLng.toFixed(5)}\n${poiDesc}\nTotal POIs: ${total}`).catch(() => {});
+    }
+  }
+  res.json({ success: true, total });
 });
 
 // Clear custom POIs
