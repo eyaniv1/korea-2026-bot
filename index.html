@@ -1261,7 +1261,6 @@ let lastAlertPollTime=Date.now();
 async function pollAlerts(){
   try{
     let myName=localStorage.getItem('wanderguide_name');
-    console.log('pollAlerts: myName=',myName,'since=',lastAlertPollTime);
     if(!myName){
       try{
         const r=await fetch(API_BASE+'/api/whoami?session='+encodeURIComponent(sessionId));

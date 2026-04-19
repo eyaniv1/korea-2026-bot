@@ -346,7 +346,6 @@ app.get('/api/alerts', (req, res) => {
   if (userName) {
     const q = getAlertQueue(userName.toLowerCase());
     const filtered = q.filter(a => a.time > since);
-    if (filtered.length > 0) console.log('Serving', filtered.length, 'alerts for', userName, 'since', since);
     res.json(filtered);
   } else {
     // Return all users' alerts combined (backwards compatibility)
@@ -426,7 +425,6 @@ function getAlertQueue(userName) {
   return alertQueues.get(key);
 }
 function addToAlertQueue(userName, text) {
-  console.log('Adding to alert queue for:', userName.toLowerCase(), 'queues:', Array.from(alertQueues.keys()));
   const q = getAlertQueue(userName.toLowerCase());
   q.push({ text, time: Date.now() });
   if (q.length > 50) q.splice(0, q.length - 50);
