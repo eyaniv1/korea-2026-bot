@@ -266,7 +266,7 @@ app.post('/api/push', (req, res) => {
 
   if (to === 'all' || !to) {
     // Broadcast to all registered Pushover users
-    sendPushoverToAll('Trip Message', message);
+    sendPushoverToAll('Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
     // Also add to alert queue for web chat
     alertQueue.push({ text: `📢 <b>Broadcast:</b> ${message}`, time: Date.now() });
     if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
@@ -276,7 +276,7 @@ app.post('/api/push', (req, res) => {
     const u = getUser(to);
     const key = u?.pushover_key;
     if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${getAllUserNames().join(', ')}` });
-    sendPushover(key, 'Trip Message', message);
+    sendPushover(key, 'Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
     // Add to alert queue so it appears in recipient's web chat
     alertQueue.push({ text: `💬 <b>Message from ${req.body.from || 'someone'}:</b> ${message}`, time: Date.now() });
     if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
