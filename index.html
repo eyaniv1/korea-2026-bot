@@ -1037,7 +1037,7 @@ async function sendChat(){
       const res=await fetch(API_BASE+'/api/push',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({to,message:pushMsg})
+        body:JSON.stringify({to,message:pushMsg,from:sessionId})
       });
       const data=await res.json();
       if(data.success)addChatMsg('bot',`✅ Push sent to <b>${data.sentTo}</b>: "${pushMsg}"`);

@@ -277,6 +277,9 @@ app.post('/api/push', (req, res) => {
     const key = u?.pushover_key;
     if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${getAllUserNames().join(', ')}` });
     sendPushover(key, 'Trip Message', message);
+    // Add to alert queue so it appears in recipient's web chat
+    alertQueue.push({ text: `💬 <b>Message from ${req.body.from || 'someone'}:</b> ${message}`, time: Date.now() });
+    if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
     res.json({ success: true, sentTo: to });
   }
 });
