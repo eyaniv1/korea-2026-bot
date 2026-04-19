@@ -999,7 +999,7 @@ async function sendChat(){
       const res=await fetch(API_BASE+'/api/pushover/register',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:name||sessionId,userKey:key,sendTest:true})
+        body:JSON.stringify({name:name||sessionId,userKey:key,sendTest:true,webSessionId:sessionId})
       });
       const data=await res.json();
       if(data.success){localStorage.setItem('wanderguide_name',data.registeredName);addChatMsg('bot',`✅ Pushover registered for <b>${data.registeredName}</b>! A test notification was sent. Registered users: ${data.users.join(', ')}`)}
@@ -1263,7 +1263,14 @@ async function fetchPois(){
 let lastAlertPollTime=Date.now();
 async function pollAlerts(){
   try{
-    const myName=localStorage.getItem('wanderguide_name')||'';
+    let myName=localStorage.getItem('wanderguide_name');
+    if(!myName){
+      try{
+        const r=await fetch(API_BASE+'/api/whoami?session='+encodeURIComponent(sessionId));
+        const d=await r.json();
+        if(d.name){myName=d.name;localStorage.setItem('wanderguide_name',myName);}
+      }catch(e){}
+    }
     const res=await fetch(API_BASE+'/api/alerts?since='+lastAlertPollTime+(myName?'&user='+encodeURIComponent(myName):''));
     const alerts=await res.json();
     for(const a of alerts){

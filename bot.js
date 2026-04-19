@@ -357,10 +357,10 @@ app.get('/api/alerts', (req, res) => {
 
 // Register Pushover user endpoint
 app.post('/api/pushover/register', (req, res) => {
-  const { name, userKey, sendTest } = req.body;
+  const { name, userKey, sendTest, webSessionId } = req.body;
   if (!name || !userKey) return res.status(400).json({ error: 'name and userKey required' });
   const registeredName = name.toLowerCase();
-  registerUser({ name: registeredName, pushoverKey: userKey });
+  registerUser({ name: registeredName, pushoverKey: userKey, webSessionId: webSessionId || null });
   if (sendTest) {
     sendPushover(userKey, 'WanderGuide', `Welcome ${name}! Push notifications are working. You'll be alerted when near interesting places.`);
   }
@@ -370,6 +370,21 @@ app.post('/api/pushover/register', (req, res) => {
 // List Pushover users
 app.get('/api/pushover/users', (req, res) => {
   res.json(getAllUserNames());
+});
+
+// Who am I — look up user by session ID or return first matching user
+app.get('/api/whoami', (req, res) => {
+  const sessionId = req.query.session;
+  if (sessionId) {
+    for (const u of users.values()) {
+      if (u.web_session_id === sessionId) return res.json({ name: u.name });
+    }
+  }
+  // Fallback: if only one user, return that
+  if (users.size === 1) {
+    return res.json({ name: Array.from(users.values())[0].name });
+  }
+  res.json({ name: null });
 });
 
 // Health check
