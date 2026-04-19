@@ -154,10 +154,11 @@ A JavaScript module with 80-200+ points of interest including:
 project-root/
 ├── index.html              # Complete web app (single file)
 ├── bot.js                  # Telegram bot + Express API server
+├── db.js                   # PostgreSQL database module (users, POIs, alerts, settings)
 ├── trip-context.js         # System prompt with full itinerary
-├── poi-database.js         # POI database + proximity functions
+├── poi-database.js         # Static POI database + proximity functions
 ├── package.json            # Node.js dependencies
-├── .env                    # API keys (not in git)
+├── .env                    # API keys (local only, not in git)
 ├── .env.example            # Template for API keys
 ├── .gitignore              # Excludes node_modules, .env
 ├── vouchers/
@@ -167,8 +168,20 @@ project-root/
 │   ├── train/              # Train tickets
 │   ├── Taxis/              # Taxi/driver confirmations
 │   └── Attractions/        # Activity vouchers (DMZ, e-bikes, etc.)
+├── API-Reference.md/pdf    # Full REST API documentation for third-party clients
+├── Technical-Overview.md/pdf # System architecture for sharing
+├── POI-Database.md/pdf     # All static POIs with links
+├── Korea-2026-Itinerary-Final.md/pdf # Complete itinerary with voucher links
+├── Korea-2026-Recommendations-Comparison.md/pdf # Friends' recommendations comparison
 └── SKILL-BLUEPRINT.md      # This document
 ```
+
+### iOS Shortcut: Add POI from Google Maps
+- User long-presses on map → drops pin → shares via Share Sheet
+- Shortcut expands short URL → splits by `q=` then `&` then `,` to extract coordinates
+- Asks for description → POSTs to `/api/pois` → shows notification
+- No regex (Shortcuts regex is unreliable) — uses Split Text approach
+- Server notifies all Telegram users when POI is added via API
 
 ---
 
@@ -213,44 +226,72 @@ project-root/
 
 ### Chat Panel
 - Floating 💬 button, bottom-right, above nav bar
-- Opens a slide-up panel with message history
+- Opens a slide-up panel — hides nav bar when open, shows when closed
+- Distinct darker background (#0a1628 with #3498db blue border) to differentiate from main app
 - Per-user sessions via random session ID stored in localStorage
 - Sends POST to Railway Express endpoint `/api/chat` with `X-Session-Id` header
 - Simple markdown rendering (bold, italic, line breaks)
 - Typing indicator while waiting for response
 - Chat messages persisted in localStorage (last 100) — survive app close/reopen
+- Every message shows timestamp (HH:MM) in bottom-right corner, persisted with history
 - Local command interception for WanderGuide controls (no server round-trip needed)
 - User's GPS coordinates auto-appended to messages mentioning "here", "nearby", "my location"
+- Photo support: 📷 button for camera/gallery, sends base64 image to Claude for translation/analysis
+- Voucher retrieval: ask "show me the car rental voucher" — Claude provides links from known voucher paths
+- `?chat=1` URL parameter auto-opens chat (used by Pushover notification tap)
+- `visibilitychange` listener immediately polls for alerts when app returns from background
 
-### Web Chat Commands (processed locally)
+### Web Chat Commands (processed locally — the primary interface for all users)
 | Command | What |
 |---------|------|
-| `alerts on/off` | Enable/disable proximity alerts |
-| `radius <meters>` | Set alert distance (50-5000m, default 300) |
-| `cooldown <minutes>` | Time between alerts (1-120, default 20) |
-| `realert <hours>` | Re-alert same POI (0.5-24, default 4) |
-| `poll <seconds>` | GPS check interval (5-120, default 20) |
-| `wanderguide status` | Show all settings, GPS, POI count |
+| `register pushover NAME KEY` | Register user + enable push notifications (primary registration method) |
+| `alerts on/off` | Enable/disable proximity alerts for this user |
+| `add poi here: DESC` | Add POI at browser GPS location (calls server API directly) |
+| `add poi at LAT, LNG: DESC` | Add POI at coordinates (calls server API directly) |
+| `nearby` | Show POIs within 3x alert radius (refreshes from server first) |
+| `@name message` | Send push notification to specific user |
+| `broadcast message` | Push to all registered users |
+| `users` | List registered users |
+| `wanderguide status` | Show GPS and POI count |
 | `clear alerts` | Reset alert history |
 | `clear chat` | Wipe visible chat history |
 | `help` | List all commands |
-| Natural language POI add/remove | Via Claude (server-side processing) |
+| `clear my POIs` | Remove all custom POIs |
 | Everything else | Sent to Claude API for AI response |
 
-### Browser GPS + Client-Side Proximity
-- `navigator.geolocation.watchPosition()` for continuous GPS tracking
-- POI database fetched from server on load, refreshed every 5 minutes
-- Proximity checks run locally every N seconds (configurable via `poll` command)
-- Haversine formula for distance calculation
-- Alert triggers: green toast notification at top of screen + chime sound + message in chat
-- AudioContext generates short sine wave chime (works with AirPods/speakers)
-- First user interaction required to unlock AudioContext (iOS requirement)
+### Architecture: Web Chat is Primary, Telegram is GPS Only
+- **Web chat** handles ALL registration, commands, settings, POI management, and user interaction
+- **Telegram** is ONLY for sharing live location (background GPS tracking on iOS)
+- Non-admin Telegram commands redirect users to the web chat
+- Admin retains full Telegram command access for management
+
+### Browser GPS
+- `navigator.geolocation.watchPosition()` requested on app load for `nearby` and `add POI here` commands
+- NOT used for proximity alerts (server-side via Telegram GPS handles that)
+- GPS permission requested once on first app load
+
+### State Persistence (localStorage)
+- `chat_session` — random session ID
+- `chat_messages` — last 100 messages with timestamps
+- `wanderguide_name` — user's registered name (set on Pushover registration, or auto-detected via `/api/whoami`)
+- `lastPage` — last viewed page index
+- `lastTab_<dayNum>` — last active tab per day
+- `chatOpen` — whether chat was open
+- `todo_<id>` — checkbox states
+
+### App Restore Behavior
+- Body starts invisible (opacity:0), restores page/tab/chat state, then fades in (no flickering)
+- `visibilitychange` event triggers immediate alert + broadcast polling on return from background
+- `?chat=1` URL parameter opens chat directly (from Pushover notification tap)
 
 ### iOS Safari Considerations
 - No `apple-mobile-web-app-capable` meta tag (breaks new-tab link behavior)
+- "Open as web app" toggle must be OFF when adding to home screen
 - Spacer divs at bottom of pages (iOS ignores padding-bottom on scroll containers)
 - `user-scalable=no` on viewport to prevent accidental zoom
 - Touch swipe handler ignores touches starting on map elements
+- `capture="environment"` removed from file input (allows camera + gallery choice)
+- AudioContext requires user interaction before first play
 
 ---
 
@@ -266,34 +307,38 @@ project-root/
 
 **Critical:** `bot.on('text')` MUST be registered AFTER all `bot.command()` handlers, otherwise commands get swallowed by the text handler in group chats.
 
-### Command List
-| Command | Access | Description |
-|---------|--------|-------------|
-| /plan | Everyone | Today's itinerary |
-| /translate <text> | Everyone | Translate to local language |
-| /nearby | Everyone | Show POIs within 1km |
-| /tips | Everyone | Show curated tips |
-| /status | Everyone | Bot settings |
-| /help | Everyone | All commands |
-| /alerts on\|off | Admin | Toggle WanderGuide |
-| /radius <meters> | Admin | Alert distance (default 300) |
-| /cooldown <minutes> | Admin | Time between alerts (default 20) |
-| /realert <hours> | Admin | Re-alert same POI (default 4) |
-| /addpoi <lat> <lng> <desc> | Admin | Add custom POI |
-| /clearpois | Admin | Remove all custom POIs |
-| /quiet | Admin | Only respond to commands |
-| /normal | Admin | Respond when mentioned (default) |
-| /chatty | Admin | Respond to everything |
-| /schedule on\|off | Admin | Toggle scheduled messages |
-| /addtip <text> | Admin | Add curated tip |
-| /deltip <num> | Admin | Remove a tip |
+### Telegram Commands (Admin only — regular users use web chat)
+| Command | Description |
+|---------|-------------|
+| /alerts on/off | Toggle WanderGuide for admin |
+| /alertsall on/off | Toggle alerts for ALL users |
+| /broadcast MSG | Push message to everyone |
+| /radius METERS | Set alert distance (default 150) |
+| /cooldown MIN | Time between alerts (default 5) |
+| /realert HRS | Re-alert same POI (default 4) |
+| /addpoi LAT LNG DESC | Add custom POI |
+| /clearpois | Remove all custom POIs |
+| /users | List registered users |
+| /deleteuser NAME | Remove a user |
+| /nearby | Show POIs within range |
+| /status | WanderGuide status |
+| /plan | Today's itinerary |
+| /translate TEXT | Translate to Korean |
+| /help | All commands |
 
-### WanderGuide Proximity System
-- Monitors live location updates from Telegram
-- Compares GPS against POI database using Haversine formula
-- Configurable radius, cooldown between alerts, re-alert cooldown per POI
-- Sends alert with POI name, distance, description, and Google Maps link
-- Works via both one-time location shares and live location (edited_message handler)
+Non-admin users who try /alerts or /register in Telegram are redirected to the web chat.
+
+### WanderGuide Proximity System (Final Architecture)
+- **GPS source:** Telegram live location sharing (background on iOS)
+- **Proximity detection:** Server-side only (per-user, via Haversine formula)
+- **Alert queue:** Per-user (lowercase name key). Alerts only go to the relevant user's web chat.
+- **Cooldown:** Per-user in PostgreSQL (alertRadius, alertCooldown, alertRevisitCooldown — persisted in `settings` table)
+- **Concurrency:** In-memory proximity lock (Set) prevents duplicate alerts from concurrent location updates
+- **Pushover:** Short clean message for Siri readout. URL opens web app with `?chat=1` to show chat.
+- **Telegram DM:** Plain text message with Maps link (no Markdown — avoids parse crashes)
+- **Web chat:** Alert appears via polling (every 15s + immediate on visibilitychange)
+- **POI notification:** When POI added via API, all Telegram users are notified
+- Auto-registration on first location share — creates user if not exists
 
 ### Scheduled Messages (node-cron)
 - 8:00 AM local time — morning briefing (today's plan)
@@ -316,6 +361,7 @@ project-root/
 | `/api/wanderguide/location` | POST | Send GPS coordinates (for native apps) |
 | `/api/wanderguide/toggle` | POST | Enable/disable alerts for a user |
 | `/api/wanderguide/settings` | POST | Update global radius/cooldown/revisit |
+| `/api/whoami` | GET | Look up user name by web session ID |
 | `/api/wanderguide/status` | GET | Get user or global WanderGuide status |
 | `/api/health` | GET | Health check |
 
@@ -424,6 +470,13 @@ When the skill is invoked for a new trip, follow this sequence:
 - **@user direct push + broadcast** — send Pushover messages to individuals or everyone from web chat
 - **Auto-registration** — any order of registration steps works (location, alerts, pushover). System auto-creates user on first interaction.
 - **API for native app development** — full REST API documented for third-party clients to replace Telegram+Pushover
+- **Web chat as primary interface** — all registration/commands through web chat, Telegram only for GPS. Simplifies user flow.
+- **Per-user alert queues** — each user only sees their own proximity alerts in web chat
+- **visibilitychange event** — immediately polls for missed alerts when app returns from background
+- **?chat=1 URL parameter** — Pushover tap opens web app directly to chat with latest alerts
+- **Body opacity:0 on load** — prevents flickering during page/tab/chat state restore
+- **iOS Shortcut for POI from Google Maps** — Split Text approach (no regex) for extracting coordinates
+- **Timestamps on every chat message** — persisted with message history
 
 ### What Didn't Work
 - **CSS translateX page system** — breaks Leaflet map rendering on non-visible pages
@@ -438,6 +491,13 @@ When the skill is invoked for a new trip, follow this sequence:
 - **Railway environment variables with dotenv** — dotenv can override Railway's env vars if .env file exists. Must check `fs.existsSync('.env')` before loading dotenv.
 - **PostgreSQL BIGINT type comparison** — Telegram user IDs come as numbers, PostgreSQL returns BIGINT as strings. Use `String()` comparison.
 - **Concurrent proximity checks** — two location updates in same second can trigger duplicate alerts. Need in-memory lock (Set) per user.
+- **Alert queue case sensitivity** — DB stores "Eran", web app polls "eran". All queue keys must normalize to lowercase.
+- **Global alert queue** — showed everyone's alerts to everyone. Must be per-user (keyed by lowercase name).
+- **Global cooldown** — one user's alert blocked others. Cooldown must be per-user (already was in DB, but in-memory state was shared).
+- **Pushover app intercepts taps** — need "Open URLs automatically" enabled in Pushover settings for direct redirect to web app.
+- **iOS Shortcuts regex** — hangs on long URLs. Use Split Text approach instead of Match Text for URL parsing.
+- **Google Maps short URLs** — `maps.app.goo.gl` doesn't contain coordinates. Must expand URL first, then extract from `q=` parameter.
+- **Google Maps named places** — share URL has place name not coordinates. User must long-press to drop a pin for coordinate-based sharing.
 
 ### iOS Safari Gotchas
 - Needs explicit spacer divs (not just padding-bottom) for content behind fixed nav
