@@ -1006,7 +1006,8 @@ async function sendChat(){
     return;
   }
   if(lower==='nearby'||lower==='/nearby'){
-    if(!userLat||!userLng){addChatMsg('bot','📍 GPS not available. Allow location permission and try again.');return;}
+    startGPS();
+    if(!userLat||!userLng){addChatMsg('bot','📍 Getting your location... Allow permission if prompted, then try "nearby" again in a few seconds.');return;}
     // Refresh POI database from server first
     await fetchPois();
     const nearbyRadius=getWanderSetting('radius',DEFAULT_RADIUS)*3;
@@ -1199,8 +1200,10 @@ function showProximityToast(name,dist){
 }
 
 // Start GPS tracking (for nearby command and add POI only — NOT for proximity alerts)
+let gpsStarted=false;
 function startGPS(){
-  if(!navigator.geolocation)return;
+  if(gpsStarted||!navigator.geolocation)return;
+  gpsStarted=true;
   navigator.geolocation.watchPosition(
     pos=>{userLat=pos.coords.latitude;userLng=pos.coords.longitude},
     err=>{console.log('GPS error:',err.message)},
@@ -1258,7 +1261,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(localStorage.getItem('chatOpen')==='1')toggleChat();
   // Show body after restore is complete
   setTimeout(()=>{document.body.style.opacity='1'},100);
-  startGPS();
+  // GPS only started on demand (nearby command, add POI here)
   fetchPois();
   // Re-fetch POIs every 5 min (picks up newly added POIs)
   setInterval(fetchPois,5*60*1000);
