@@ -877,11 +877,12 @@ function saveChatMessages(arr){
 }
 function addChatMsg(role,html){
   const msgs=document.getElementById('chat-messages');
-  msgs.innerHTML+=`<div class="chat-msg ${role}"><div class="bubble">${html}</div></div>`;
+  const timeStr=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  msgs.innerHTML+=`<div class="chat-msg ${role}"><div class="bubble">${html}<div style="font-size:10px;color:#666;text-align:right;margin-top:4px">${timeStr}</div></div></div>`;
   msgs.scrollTop=msgs.scrollHeight;
   // Persist
   const stored=loadChatMessages();
-  stored.push({role,html});
+  stored.push({role,html,time:timeStr});
   saveChatMessages(stored);
 }
 function restoreChatMessages(){
@@ -891,7 +892,7 @@ function restoreChatMessages(){
   // Clear default welcome message if we have history
   msgs.innerHTML='';
   for(const m of stored){
-    msgs.innerHTML+=`<div class="chat-msg ${m.role}"><div class="bubble">${m.html}</div></div>`;
+    msgs.innerHTML+=`<div class="chat-msg ${m.role}"><div class="bubble">${m.html}${m.time?`<div style="font-size:10px;color:#666;text-align:right;margin-top:4px">${m.time}</div>`:''}</div></div>`;
   }
   msgs.scrollTop=msgs.scrollHeight;
 }
