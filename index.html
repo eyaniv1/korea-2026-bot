@@ -1016,6 +1016,34 @@ async function sendChat(){
     }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
     return;
   }
+  // Add POI with coordinates: "add poi at 37.5, 126.9: description" or "add poi at 37.5, 126.9 description"
+  const addPoiCoordsMatch=msg.match(/add\s*poi\s*(?:at\s+)?(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)[:\s]+(.+)/i);
+  if(addPoiCoordsMatch){
+    const lat=parseFloat(addPoiCoordsMatch[1]);
+    const lng=parseFloat(addPoiCoordsMatch[2]);
+    const desc=addPoiCoordsMatch[3].trim();
+    try{
+      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat,lng,desc})});
+      const data=await res.json();
+      if(data.success)addChatMsg('bot',`📍 POI added: "${desc}" at ${lat.toFixed(5)}, ${lng.toFixed(5)}. Total POIs: ${data.total}`);
+      else addChatMsg('bot','❌ '+data.error);
+    }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
+    return;
+  }
+  // Add POI here: "add poi here: description" or "add poi here description"
+  const addPoiHereMatch=msg.match(/add\s*poi\s*here[:\s]+(.+)/i);
+  if(addPoiHereMatch){
+    startGPS();
+    if(!userLat||!userLng){addChatMsg('bot','📍 Getting your location... Allow permission if prompted, then try again in a few seconds.');return;}
+    const desc=addPoiHereMatch[1].trim();
+    try{
+      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat:userLat,lng:userLng,desc})});
+      const data=await res.json();
+      if(data.success)addChatMsg('bot',`📍 POI added: "${desc}" at ${userLat.toFixed(5)}, ${userLng.toFixed(5)}. Total POIs: ${data.total}`);
+      else addChatMsg('bot','❌ '+data.error);
+    }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
+    return;
+  }
   if(lower==='nearby'||lower==='/nearby'){
     startGPS();
     if(!userLat||!userLng){addChatMsg('bot','📍 Getting your location... Allow permission if prompted, then try "nearby" again in a few seconds.');return;}
