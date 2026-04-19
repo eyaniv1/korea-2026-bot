@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0}
-body{padding-bottom:70px;overflow-x:hidden}
+body{padding-bottom:70px;overflow-x:hidden;opacity:0;transition:opacity 0.2s}
 @media(max-width:768px){body{padding-bottom:0}}
 
 /* Bottom nav */
@@ -1251,11 +1251,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Enable audio context on first user interaction (iOS requirement)
   document.addEventListener('click',()=>{if(alertAudioCtx&&alertAudioCtx.state==='suspended')alertAudioCtx.resume()},{once:true});
   restoreChatMessages();
-  // Restore last viewed page
+  // Restore last viewed page (without animation)
   const lastPage=parseInt(localStorage.getItem('lastPage'));
-  if(lastPage&&lastPage>0)setTimeout(()=>goPage(lastPage),200);
+  if(lastPage&&lastPage>0)goPage(lastPage);
   // Restore chat open state
-  if(localStorage.getItem('chatOpen')==='1')setTimeout(()=>toggleChat(),300);
+  if(localStorage.getItem('chatOpen')==='1')toggleChat();
+  // Show body after restore is complete
+  setTimeout(()=>{document.body.style.opacity='1'},100);
   startGPS();
   fetchPois();
   // Re-fetch POIs every 5 min (picks up newly added POIs)
