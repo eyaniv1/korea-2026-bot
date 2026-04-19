@@ -228,9 +228,13 @@ app.get('/api/pois', (req, res) => {
 
 // Add POI endpoint (for web app direct add)
 app.post('/api/pois', (req, res) => {
-  const { name, lat, lng, desc } = req.body;
-  if (!lat || !lng || !desc) return res.status(400).json({ error: 'lat, lng, desc required' });
-  addCustomPoi(name || desc.substring(0, 50), parseFloat(lat), parseFloat(lng), desc);
+  console.log('Add POI request body:', JSON.stringify(req.body));
+  const { name, lat, lng, desc, description } = req.body;
+  const poiLat = parseFloat(lat);
+  const poiLng = parseFloat(lng);
+  const poiDesc = desc || description || name || 'User-added POI';
+  if (isNaN(poiLat) || isNaN(poiLng)) return res.status(400).json({ error: 'Valid lat and lng numbers required' });
+  addCustomPoi(name || poiDesc.substring(0, 50), poiLat, poiLng, poiDesc);
   res.json({ success: true, total: require('./poi-database').getAllPois().length });
 });
 
