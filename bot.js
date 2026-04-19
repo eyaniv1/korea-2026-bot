@@ -420,11 +420,12 @@ let alertRevisitCooldown = 4 * 60 * 60 * 1000;
 // Alert queue for web app display — per user
 const alertQueues = new Map(); // userName → [{text, time}]
 function getAlertQueue(userName) {
-  if (!alertQueues.has(userName)) alertQueues.set(userName, []);
-  return alertQueues.get(userName);
+  const key = userName.toLowerCase();
+  if (!alertQueues.has(key)) alertQueues.set(key, []);
+  return alertQueues.get(key);
 }
 function addToAlertQueue(userName, text) {
-  const q = getAlertQueue(userName);
+  const q = getAlertQueue(userName.toLowerCase());
   q.push({ text, time: Date.now() });
   if (q.length > 50) q.splice(0, q.length - 50);
 }
