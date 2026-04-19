@@ -458,7 +458,7 @@ async function checkUserProximity(userName) {
     // 1. Send Pushover — SHORT message for Siri readout
     if (user.pushover_key) {
       const pushMsg = `Hey ${user.name}, you're ${poi.distance} meters from ${poi.name}.`;
-      sendPushover(user.pushover_key, 'WanderGuide', pushMsg, mapsUrl);
+      sendPushover(user.pushover_key, 'WanderGuide', pushMsg, 'https://eyaniv1.github.io/korea-2026-bot/');
     }
 
     // 2. Send Telegram DM if user has a telegram ID
