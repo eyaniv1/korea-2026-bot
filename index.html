@@ -1301,8 +1301,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Restore last viewed page (without animation)
   const lastPage=parseInt(localStorage.getItem('lastPage'));
   if(lastPage&&lastPage>0)goPage(lastPage);
-  // Restore chat open state
-  if(localStorage.getItem('chatOpen')==='1')toggleChat();
+  // Restore chat open state, or open if ?chat=1 in URL (from Pushover tap)
+  if(window.location.search.includes('chat=1')||localStorage.getItem('chatOpen')==='1'){
+    toggleChat();
+    // Clean the URL parameter
+    if(window.location.search.includes('chat=1'))history.replaceState(null,'',window.location.pathname);
+    // Immediately poll for alerts
+    setTimeout(pollAlerts,500);
+  }
   // Show body after restore is complete
   setTimeout(()=>{document.body.style.opacity='1'},100);
   startGPS();

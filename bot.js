@@ -266,7 +266,7 @@ app.post('/api/push', (req, res) => {
 
   if (to === 'all' || !to) {
     // Broadcast to all registered Pushover users
-    sendPushoverToAll('Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
+    sendPushoverToAll('Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/?chat=1');
     // Also add to alert queue for web chat
     for(const u of users.values()) addToAlertQueue(u.name, `📢 <b>Broadcast:</b> ${message}`);
     if (alertQueue.length > 50) alertQueue.splice(0, alertQueue.length - 50);
@@ -276,7 +276,7 @@ app.post('/api/push', (req, res) => {
     const u = getUser(to);
     const key = u?.pushover_key;
     if (!key) return res.status(404).json({ error: `User "${to}" not found. Registered: ${getAllUserNames().join(', ')}` });
-    sendPushover(key, 'Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/');
+    sendPushover(key, 'Trip Message', message, 'https://eyaniv1.github.io/korea-2026-bot/?chat=1');
     // Add to recipient's alert queue only
     addToAlertQueue(to.toLowerCase(), `💬 <b>Message from ${req.body.from || 'someone'}:</b> ${message}`);
     res.json({ success: true, sentTo: to });
@@ -458,7 +458,7 @@ async function checkUserProximity(userName) {
     // 1. Send Pushover — SHORT message for Siri readout
     if (user.pushover_key) {
       const pushMsg = `Hey ${user.name}, you're ${poi.distance} meters from ${poi.name}.`;
-      sendPushover(user.pushover_key, 'WanderGuide', pushMsg, 'https://eyaniv1.github.io/korea-2026-bot/');
+      sendPushover(user.pushover_key, 'WanderGuide', pushMsg, 'https://eyaniv1.github.io/korea-2026-bot/?chat=1');
     }
 
     // 2. Send Telegram DM if user has a telegram ID
