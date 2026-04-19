@@ -1300,7 +1300,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(localStorage.getItem('chatOpen')==='1')toggleChat();
   // Show body after restore is complete
   setTimeout(()=>{document.body.style.opacity='1'},100);
-  // GPS only started on demand (nearby command, add POI here)
+  startGPS();
   fetchPois();
   // Re-fetch POIs every 5 min (picks up newly added POIs)
   setInterval(fetchPois,5*60*1000);
