@@ -865,7 +865,8 @@ function formatReply(reply){
     .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
     .replace(/\*(.*?)\*/g,'<i>$1</i>')
     .replace(/\n- /g,'\n• ')
-    .replace(/\n/g,'<br>');
+    .replace(/\n/g,'<br>')
+    .replace(/(https?:\/\/[^\s<>"')\]]+)/g,'<a href="$1" target="_blank" style="color:#4fc3f7;word-break:break-all">$1</a>');
 }
 
 function loadChatMessages(){
