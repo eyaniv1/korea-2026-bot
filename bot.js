@@ -37,6 +37,8 @@ function getAllUserNames() {
 
 async function registerUser(data) {
   // data: { name, pushoverKey, telegramUserId, webSessionId, enabled, lat, lng }
+  // Always normalize name to lowercase to prevent case-variant duplicates
+  if (data.name) data.name = data.name.toLowerCase();
   const row = await db.upsertUser(data);
   users.set(row.name.toLowerCase(), row);
   return row;
