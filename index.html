@@ -1020,7 +1020,7 @@ async function sendChat(){
     const lng=parseFloat(addPoiCoordsMatch[2]);
     const desc=addPoiCoordsMatch[3].trim();
     try{
-      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat,lng,desc})});
+      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat,lng,desc,createdBy:localStorage.getItem('wanderguide_name')||sessionId})});
       const data=await res.json();
       if(data.success)addChatMsg('bot',`📍 POI added: "${desc}" at ${lat.toFixed(5)}, ${lng.toFixed(5)}. Total POIs: ${data.total}`);
       else addChatMsg('bot','❌ '+data.error);
@@ -1034,7 +1034,7 @@ async function sendChat(){
     if(!userLat||!userLng){addChatMsg('bot','📍 Getting your location... Allow permission if prompted, then try again in a few seconds.');return;}
     const desc=addPoiHereMatch[1].trim();
     try{
-      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat:userLat,lng:userLng,desc})});
+      const res=await fetch(API_BASE+'/api/pois',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:desc.substring(0,50),lat:userLat,lng:userLng,desc,createdBy:localStorage.getItem('wanderguide_name')||sessionId})});
       const data=await res.json();
       if(data.success)addChatMsg('bot',`📍 POI added: "${desc}" at ${userLat.toFixed(5)}, ${userLng.toFixed(5)}. Total POIs: ${data.total}`);
       else addChatMsg('bot','❌ '+data.error);

@@ -118,21 +118,32 @@ function getAllPois() {
   return [...STATIC_POIS, ...customPois];
 }
 
-function addCustomPoi(name, lat, lng, desc) {
+function addCustomPoi(name, lat, lng, desc, createdBy) {
   // Add to memory immediately
-  customPois.push({ name, lat, lng, desc, city: 'Custom', category: 'hidden-gem' });
+  customPois.push({ name, lat, lng, desc, city: 'Custom', category: 'hidden-gem', created_by: createdBy || null });
   // Persist to database
   try {
     const { addCustomPoiDB } = require('./db');
-    addCustomPoiDB(name, lat, lng, desc).catch(err => console.error('DB addPoi error:', err.message));
+    addCustomPoiDB(name, lat, lng, desc, createdBy).catch(err => console.error('DB addPoi error:', err.message));
   } catch (err) { /* db not ready yet */ }
 }
 
-function clearCustomPois() {
-  customPois.length = 0;
+function clearCustomPois(createdBy) {
+  if (createdBy) {
+    // Remove only this user's POIs from memory
+    const lowerName = createdBy.toLowerCase();
+    for (let i = customPois.length - 1; i >= 0; i--) {
+      if (customPois[i].created_by && customPois[i].created_by.toLowerCase() === lowerName) {
+        customPois.splice(i, 1);
+      }
+    }
+  } else {
+    // Remove all custom POIs
+    customPois.length = 0;
+  }
   try {
     const { clearCustomPoisDB } = require('./db');
-    clearCustomPoisDB().catch(err => console.error('DB clearPois error:', err.message));
+    clearCustomPoisDB(createdBy).catch(err => console.error('DB clearPois error:', err.message));
   } catch (err) { /* db not ready yet */ }
 }
 

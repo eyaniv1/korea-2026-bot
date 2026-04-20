@@ -191,8 +191,12 @@ async function addCustomPoiDB(name, lat, lng, desc, createdBy) {
   );
 }
 
-async function clearCustomPoisDB() {
-  await pool.query('DELETE FROM custom_pois');
+async function clearCustomPoisDB(createdBy) {
+  if (createdBy) {
+    await pool.query('DELETE FROM custom_pois WHERE LOWER(created_by) = LOWER($1)', [createdBy]);
+  } else {
+    await pool.query('DELETE FROM custom_pois');
+  }
 }
 
 // === ALERT HISTORY ===

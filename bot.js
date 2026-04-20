@@ -197,13 +197,13 @@ When providing a voucher link, format it as: [📎 Description](https://eyaniv1.
     if (addPoiMatch) {
       try {
         const poi = JSON.parse(addPoiMatch[1]);
-        addCustomPoi(poi.name || poi.desc.substring(0, 50), poi.lat, poi.lng, poi.desc);
+        addCustomPoi(poi.name || poi.desc.substring(0, 50), poi.lat, poi.lng, poi.desc, sessionId);
         reply = reply.replace(/\{"addPoi":[^}]+\}\}/, '').trim();
       } catch(e) { /* ignore parse errors */ }
     }
     const clearMatch = reply.match(/\{"clearPois":\s*true\s*\}/);
     if (clearMatch) {
-      clearCustomPois();
+      clearCustomPois(sessionId);
       reply = reply.replace(/\{"clearPois":\s*true\s*\}/, '').trim();
     }
 
@@ -235,7 +235,7 @@ app.post('/api/pois', (req, res) => {
   const poiDesc = desc || description || name || 'User-added POI';
   if (isNaN(poiLat) || isNaN(poiLng)) return res.status(400).json({ error: 'Valid lat and lng numbers required' });
   const poiName = name || poiDesc.substring(0, 50);
-  addCustomPoi(poiName, poiLat, poiLng, poiDesc);
+  addCustomPoi(poiName, poiLat, poiLng, poiDesc, req.body.createdBy || 'api');
   const total = require('./poi-database').getAllPois().length;
   // Notify all Telegram users
   for (const u of users.values()) {
@@ -246,10 +246,11 @@ app.post('/api/pois', (req, res) => {
   res.json({ success: true, total });
 });
 
-// Clear custom POIs
+// Clear custom POIs (pass ?user=name to clear only that user's POIs)
 app.delete('/api/pois', (req, res) => {
-  clearCustomPois();
-  res.json({ success: true });
+  const user = req.query.user;
+  clearCustomPois(user || null);
+  res.json({ success: true, clearedFor: user || 'all' });
 });
 
 // Broadcast messages endpoint (scheduled messages for web app)
@@ -1062,7 +1063,7 @@ bot.command('addpoi', (ctx) => {
   const lng = parseFloat(parts[1]);
   if (isNaN(lat) || isNaN(lng)) return ctx.reply('Invalid coordinates. Usage: /addpoi 37.5745 126.9856 Description here');
   const desc = parts.slice(2).join(' ');
-  addCustomPoi(desc.substring(0, 50), lat, lng, desc);
+  addCustomPoi(desc.substring(0, 50), lat, lng, desc, ctx.from.first_name || 'admin');
   ctx.reply(`📍 Custom POI added at ${lat}, ${lng}: "${desc}"`);
 });
 
