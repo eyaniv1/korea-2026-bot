@@ -395,28 +395,40 @@ app.post('/api/rename', async (req, res) => {
     if (!newName) return res.status(400).json({ error: 'newName required' });
     const lowerNew = newName.toLowerCase();
 
+    // Check if target name already exists
+    const existingNew = getUser(newName);
+
+    if (existingNew) {
+      // Target name exists — merge: link this session to the existing user
+      existingNew.web_session_id = webSessionId;
+      await db.pool.query('UPDATE users SET web_session_id = $1, updated_at = NOW() WHERE LOWER(name) = LOWER($2)', [webSessionId, newName]);
+      // If there was an old user with a different name, merge pushover key if missing
+      if (oldName && oldName.toLowerCase() !== lowerNew) {
+        const oldUser = getUser(oldName);
+        if (oldUser) {
+          if (!existingNew.pushover_key && oldUser.pushover_key) {
+            existingNew.pushover_key = oldUser.pushover_key;
+            await db.pool.query('UPDATE users SET pushover_key = $1 WHERE LOWER(name) = LOWER($2)', [oldUser.pushover_key, newName]);
+          }
+          // Delete the old record
+          await db.pool.query('DELETE FROM users WHERE LOWER(name) = LOWER($1)', [oldName]);
+          users.delete(oldName.toLowerCase());
+        }
+      }
+      return res.json({ success: true, name: existingNew.name, renamed: false });
+    }
+
     if (oldName) {
-      // Rename existing user
+      // Rename existing user (no conflict)
       const existing = getUser(oldName);
       if (existing) {
-        // Update name in DB
         await db.pool.query('UPDATE users SET name = $1, web_session_id = $2, updated_at = NOW() WHERE LOWER(name) = LOWER($3)', [newName, webSessionId, oldName]);
-        // Update in-memory cache
         users.delete(oldName.toLowerCase());
         existing.name = newName;
         existing.web_session_id = webSessionId;
         users.set(lowerNew, existing);
         return res.json({ success: true, name: newName, renamed: true, oldName });
       }
-    }
-
-    // Check if newName already exists
-    const existingNew = getUser(newName);
-    if (existingNew) {
-      // Link this session to existing user
-      existingNew.web_session_id = webSessionId;
-      await db.pool.query('UPDATE users SET web_session_id = $1, updated_at = NOW() WHERE LOWER(name) = LOWER($2)', [webSessionId, newName]);
-      return res.json({ success: true, name: existingNew.name, renamed: false });
     }
 
     // Create new user
