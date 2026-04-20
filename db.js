@@ -180,7 +180,7 @@ async function loadSettings() {
 // === CUSTOM POIs ===
 
 async function getCustomPois() {
-  const result = await pool.query('SELECT name, lat, lng, description as desc, city, category FROM custom_pois ORDER BY id');
+  const result = await pool.query('SELECT name, lat, lng, description as desc, city, category, created_by FROM custom_pois ORDER BY id');
   return result.rows;
 }
 
