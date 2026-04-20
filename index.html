@@ -1092,7 +1092,7 @@ async function sendChat(){
       const res=await fetch(API_BASE+'/api/push',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({to,message:pushMsg,from:sessionId})
+        body:JSON.stringify({to,message:pushMsg,from:localStorage.getItem('wanderguide_name')||sessionId})
       });
       const data=await res.json();
       if(data.success)addChatMsg('bot',`✅ Push sent to <b>${data.sentTo}</b>: "${pushMsg}"`);

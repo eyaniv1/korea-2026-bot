@@ -119,18 +119,36 @@ async function upsertUser(data) {
         return result.rows[0];
       }
     }
+    // Check for case-insensitive name match first
+    const existingByName = await pool.query('SELECT * FROM users WHERE LOWER(name) = LOWER($1)', [data.name]);
+    if (existingByName.rows[0]) {
+      // Update existing user (case-insensitive match)
+      const result = await pool.query(`
+        UPDATE users SET
+          pushover_key = COALESCE($1, pushover_key),
+          telegram_user_id = COALESCE($2, telegram_user_id),
+          web_session_id = COALESCE($3, web_session_id),
+          enabled = COALESCE($4, enabled),
+          lat = COALESCE($5, lat),
+          lng = COALESCE($6, lng),
+          updated_at = NOW()
+        WHERE LOWER(name) = LOWER($7)
+        RETURNING *
+      `, [
+        data.pushoverKey || null,
+        data.telegramUserId || null,
+        data.webSessionId || null,
+        data.enabled ?? null,
+        data.lat || null,
+        data.lng || null,
+        data.name
+      ]);
+      return result.rows[0];
+    }
     // Insert new user
     const result = await pool.query(`
       INSERT INTO users (name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-      ON CONFLICT (name) DO UPDATE SET
-        pushover_key = COALESCE($2, users.pushover_key),
-        telegram_user_id = COALESCE($3, users.telegram_user_id),
-        web_session_id = COALESCE($4, users.web_session_id),
-        enabled = COALESCE($5, users.enabled),
-        lat = COALESCE($6, users.lat),
-        lng = COALESCE($7, users.lng),
-        updated_at = NOW()
       RETURNING *
     `, [
       data.name,

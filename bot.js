@@ -49,10 +49,31 @@ async function deleteUser(name) {
 
 async function loadUsers() {
   const rows = await db.getAllUsers();
+  // Merge duplicate case-variant rows (e.g. "Jonathan" + "jonathan")
+  const byLower = {};
   for (const row of rows) {
-    users.set(row.name.toLowerCase(), row);
+    const key = row.name.toLowerCase();
+    if (byLower[key]) {
+      // Merge: keep the one with more data, copy missing fields
+      const prev = byLower[key];
+      const merged = prev;
+      if (!merged.pushover_key && row.pushover_key) merged.pushover_key = row.pushover_key;
+      if (!merged.telegram_user_id && row.telegram_user_id) merged.telegram_user_id = row.telegram_user_id;
+      if (!merged.web_session_id && row.web_session_id) merged.web_session_id = row.web_session_id;
+      if (row.enabled && !merged.enabled) merged.enabled = true;
+      // Update the kept row and delete the duplicate
+      await db.pool.query(`UPDATE users SET pushover_key = $1, telegram_user_id = $2, web_session_id = $3, enabled = $4 WHERE id = $5`,
+        [merged.pushover_key, merged.telegram_user_id, merged.web_session_id, merged.enabled, merged.id]);
+      await db.pool.query('DELETE FROM users WHERE id = $1', [row.id]);
+      console.log(`🔀 Merged duplicate user "${row.name}" into "${merged.name}"`);
+    } else {
+      byLower[key] = row;
+    }
   }
-  console.log(`👤 Loaded ${rows.length} users from database`);
+  for (const [key, row] of Object.entries(byLower)) {
+    users.set(key, row);
+  }
+  console.log(`👤 Loaded ${Object.keys(byLower).length} users from database`);
 }
 
 // ===== PUSHOVER =====
@@ -357,13 +378,15 @@ app.get('/api/alerts', (req, res) => {
 });
 
 // Register Pushover user endpoint
-app.post('/api/pushover/register', (req, res) => {
+app.post('/api/pushover/register', async (req, res) => {
   const { name, userKey, sendTest, webSessionId } = req.body;
   if (!name || !userKey) return res.status(400).json({ error: 'name and userKey required' });
-  const registeredName = name.toLowerCase();
-  registerUser({ name: registeredName, pushoverKey: userKey, webSessionId: webSessionId || null });
+  // Look up existing user first to preserve their exact DB name
+  const existing = getUser(name);
+  const registeredName = existing ? existing.name : name.toLowerCase();
+  await registerUser({ name: registeredName, pushoverKey: userKey, webSessionId: webSessionId || null });
   if (sendTest) {
-    sendPushover(userKey, 'WanderGuide', `Welcome ${name}! Push notifications are working. You'll be alerted when near interesting places.`);
+    sendPushover(userKey, 'WanderGuide', `Welcome ${registeredName}! Push notifications are working. You'll be alerted when near interesting places.`);
   }
   res.json({ success: true, registeredName, users: getAllUserNames() });
 });
