@@ -410,6 +410,51 @@ const totalPages=DAYS.length+4; // cover + 12 days + todo + info + missing
 const mapInstances={};
 const mapBounds={};
 
+// Weather forecast via Open-Meteo (free, no API key)
+const CITY_COORDS={seoul:{lat:37.5665,lng:126.978},jeju:{lat:33.4996,lng:126.5312},busan:{lat:35.1796,lng:129.0756}};
+const WMO_ICONS={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌧️',55:'🌧️',56:'🌧️',57:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',77:'🌨️',80:'🌦️',81:'🌧️',82:'🌧️',85:'🌨️',86:'🌨️',95:'⛈️',96:'⛈️',99:'⛈️'};
+const weatherCache={};
+
+async function fetchWeather(dayIdx){
+  const day=DAYS[dayIdx];
+  if(!day)return;
+  // Map day region to coordinates
+  const cityKey=day.nc==='travel'?(dayIdx<6?'seoul':'seoul'):day.nc;
+  const coords=CITY_COORDS[cityKey];
+  if(!coords)return;
+  // Parse date from day — "Apr 23 (Thu)" → 2026-04-23
+  const months={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const dm=day.date.match(/(\w+)\s+(\d+)/);
+  if(!dm)return;
+  const dateStr=`2026-${months[dm[1]]}-${dm[2].padStart(2,'0')}`;
+  // Cache key
+  const cacheKey=`${cityKey}_${dateStr}`;
+  const cached=weatherCache[cacheKey];
+  if(cached&&Date.now()-cached.ts<30*60*1000){
+    renderWeather(dayIdx,cached.data);
+    return;
+  }
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Seoul&start_date=${dateStr}&end_date=${dateStr}`;
+    const res=await fetch(url);
+    const json=await res.json();
+    if(json.daily){
+      const data={code:json.daily.weather_code[0],tmax:Math.round(json.daily.temperature_2m_max[0]),tmin:Math.round(json.daily.temperature_2m_min[0]),rain:json.daily.precipitation_probability_max?json.daily.precipitation_probability_max[0]:null};
+      weatherCache[cacheKey]={data,ts:Date.now()};
+      renderWeather(dayIdx,data);
+    }
+  }catch(e){console.log('Weather fetch error:',e.message)}
+}
+
+function renderWeather(dayIdx,w){
+  const el=document.getElementById('weather-'+DAYS[dayIdx].num);
+  if(!el)return;
+  const icon=WMO_ICONS[w.code]||'🌡️';
+  let txt=`${icon} ${w.tmin}°–${w.tmax}°C`;
+  if(w.rain!=null&&w.rain>30)txt+=` 💧${w.rain}%`;
+  el.innerHTML=txt;
+}
+
 function toggleTodo(id){
   const cb=document.getElementById('cb-'+id);
   const row=document.getElementById('todo-row-'+id);
@@ -443,6 +488,7 @@ function goPage(idx){
   // Fix map rendering and zoom for newly visible page
   if(idx>0 && idx<=DAYS.length){
     const dayNum=DAYS[idx-1].num;
+    fetchWeather(idx-1);
     setTimeout(()=>{
       const m=mapInstances[dayNum];
       if(!m)return;
@@ -516,7 +562,7 @@ function build(){
     page.dataset.day=day.num;
 
     // Header
-    let h=`<div class="pg-hdr"><span class="dn">${day.sd}</span><h2>${day.title}</h2><div class="sub">${day.date} · ${day.region}</div></div>`;
+    let h=`<div class="pg-hdr"><span class="dn">${day.sd}</span><h2>${day.title}</h2><div class="sub">${day.date} · ${day.region} <span id="weather-${day.num}" style="margin-left:8px;font-size:13px;opacity:0.85"></span></div></div>`;
 
     // Tabs
     h+=`<div class="tabs">
