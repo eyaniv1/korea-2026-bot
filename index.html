@@ -1058,6 +1058,19 @@ async function sendChat(){
     }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
     return;
   }
+  if(lower==='clear my pois'||lower==='clear my poi'||lower==='delete my pois'){
+    const myName=localStorage.getItem('wanderguide_name');
+    if(!myName){addChatMsg('bot','❌ Register first with: <b>register pushover YOUR_NAME YOUR_KEY</b>');return;}
+    try{
+      const res=await fetch(API_BASE+'/api/pois?user='+encodeURIComponent(myName),{method:'DELETE'});
+      const data=await res.json();
+      if(data.success){
+        await fetchPois();
+        addChatMsg('bot',`🗑️ Cleared your POIs (${myName}). Shared POIs from others are unaffected.`);
+      }else addChatMsg('bot','❌ '+(data.error||'Failed'));
+    }catch(e){addChatMsg('bot','❌ Could not connect to server.');}
+    return;
+  }
   if(lower==='nearby'||lower==='/nearby'){
     startGPS();
     if(!userLat||!userLng){addChatMsg('bot','📍 Getting your location... Allow permission if prompted, then try "nearby" again in a few seconds.');return;}
