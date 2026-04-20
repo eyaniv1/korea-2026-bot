@@ -1326,6 +1326,8 @@ async function pollBroadcasts(){
 
 // Initialize GPS, POIs, and broadcast polling
 document.addEventListener('DOMContentLoaded',()=>{
+  // Build pages first
+  build();
   // Enable audio context on first user interaction (iOS requirement)
   document.addEventListener('click',()=>{if(alertAudioCtx&&alertAudioCtx.state==='suspended')alertAudioCtx.resume()},{once:true});
   restoreChatMessages();
@@ -1353,8 +1355,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Immediately poll when app becomes visible again (returning from background)
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){pollAlerts();pollBroadcasts();}});
 });
-
-document.addEventListener('DOMContentLoaded',build);
 </script>
 </body>
 </html>
