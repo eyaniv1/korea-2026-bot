@@ -63,10 +63,10 @@ async function loadUsers() {
       if (!merged.telegram_user_id && row.telegram_user_id) merged.telegram_user_id = row.telegram_user_id;
       if (!merged.web_session_id && row.web_session_id) merged.web_session_id = row.web_session_id;
       if (row.enabled && !merged.enabled) merged.enabled = true;
-      // Update the kept row and delete the duplicate
+      // Delete the duplicate first (avoids unique constraint on telegram_user_id), then update kept row
+      await db.pool.query('DELETE FROM users WHERE id = $1', [row.id]);
       await db.pool.query(`UPDATE users SET pushover_key = $1, telegram_user_id = $2, web_session_id = $3, enabled = $4 WHERE id = $5`,
         [merged.pushover_key, merged.telegram_user_id, merged.web_session_id, merged.enabled, merged.id]);
-      await db.pool.query('DELETE FROM users WHERE id = $1', [row.id]);
       console.log(`🔀 Merged duplicate user "${row.name}" into "${merged.name}"`);
     } else {
       byLower[key] = row;
