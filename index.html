@@ -468,7 +468,7 @@ function toggleTodo(id){
 }
 
 function gmapsUrl(q){return `https://www.google.com/maps/search/${q.replace(/\+/g,'+')}+South+Korea`}
-function kakaoUrl(q){return `https://map.kakao.com/?q=${q.replace(/\+/g,' ')}`}
+function naverUrl(q){return `https://map.naver.com/v5/search/${encodeURIComponent(q.replace(/\+/g,' '))}`}
 function showInfo(key,name){
   document.getElementById('modal-title').textContent=name.replace(/🥾|🚴/g,'').trim();
   document.getElementById('modal-body').innerHTML=DESC[key]||'No description available.';
@@ -589,7 +589,7 @@ function build(){
         <div class="poi-actions">
           <button class="poi-action-btn" onclick="showInfo('${p.key}','${cleanName.replace(/'/g,"\\'")}')">ℹ️ Info</button>
           <a class="poi-action-btn gmaps" href="${gmapsUrl(p.q)}" target="_blank" rel="noopener">📍 Google</a>
-          <a class="poi-action-btn" href="${kakaoUrl(p.q)}" target="_blank" rel="noopener" style="color:#fee500">🗺️ Kakao</a>
+          <a class="poi-action-btn" href="${naverUrl(p.q)}" target="_blank" rel="noopener" style="color:#2db400">🗺️ Naver</a>
           ${p.voucher?`<a class="poi-action-btn" href="${p.voucher}" target="_blank" rel="noopener" style="color:#2ecc71">📎 Voucher</a>`:''}
         </div></div></div>`;
     });
