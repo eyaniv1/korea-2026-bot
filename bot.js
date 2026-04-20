@@ -388,6 +388,46 @@ app.get('/api/whoami', (req, res) => {
   res.json({ name: null });
 });
 
+// Rename / "I am" — set or change user name
+app.post('/api/rename', async (req, res) => {
+  try {
+    const { oldName, newName, webSessionId } = req.body;
+    if (!newName) return res.status(400).json({ error: 'newName required' });
+    const lowerNew = newName.toLowerCase();
+
+    if (oldName) {
+      // Rename existing user
+      const existing = getUser(oldName);
+      if (existing) {
+        // Update name in DB
+        await db.pool.query('UPDATE users SET name = $1, web_session_id = $2, updated_at = NOW() WHERE LOWER(name) = LOWER($3)', [newName, webSessionId, oldName]);
+        // Update in-memory cache
+        users.delete(oldName.toLowerCase());
+        existing.name = newName;
+        existing.web_session_id = webSessionId;
+        users.set(lowerNew, existing);
+        return res.json({ success: true, name: newName, renamed: true, oldName });
+      }
+    }
+
+    // Check if newName already exists
+    const existingNew = getUser(newName);
+    if (existingNew) {
+      // Link this session to existing user
+      existingNew.web_session_id = webSessionId;
+      await db.pool.query('UPDATE users SET web_session_id = $1, updated_at = NOW() WHERE LOWER(name) = LOWER($2)', [webSessionId, newName]);
+      return res.json({ success: true, name: existingNew.name, renamed: false });
+    }
+
+    // Create new user
+    const user = await registerUser({ name: newName, webSessionId });
+    res.json({ success: true, name: user.name, renamed: false });
+  } catch (err) {
+    console.error('Rename error:', err.message);
+    res.status(500).json({ error: 'Failed to update name' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', pois: require('./poi-database').getAllPois().length, sessions: webSessions.size });
