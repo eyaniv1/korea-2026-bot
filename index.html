@@ -121,6 +121,7 @@ body{padding-bottom:70px;overflow-x:hidden;opacity:0;transition:opacity 0.2s}
 .ios-spacer{height:40px;min-height:40px}
 @media(max-width:768px){.ios-spacer{height:10px;min-height:10px}}
 .n-icon{background:#e74c3c;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.hotel-icon{background:#3498db;color:#fff;border-radius:6px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 
 /* Chat bubble */
 .chat-fab{position:fixed;bottom:76px;right:16px;z-index:1500;width:52px;height:52px;border-radius:50%;background:#e74c3c;color:#fff;border:none;cursor:pointer;font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:transform .2s}
@@ -414,6 +415,21 @@ let currentPage=0;
 const totalPages=DAYS.length+4; // cover + 12 days + todo + info + missing
 const mapInstances={};
 const mapBounds={};
+// Hotel coordinates per day (looked up by day number)
+const HOTELS={
+  1:{lat:37.5718,lng:126.9870,name:"Amid Hotel Seoul"},
+  2:{lat:37.5718,lng:126.9870,name:"Amid Hotel Seoul"},
+  3:{lat:37.5718,lng:126.9870,name:"Amid Hotel Seoul"},
+  4:{lat:33.5130,lng:126.5280,name:"Grabel Hotel Jeju"},
+  5:{lat:33.5130,lng:126.5280,name:"Grabel Hotel Jeju"},
+  6:{lat:33.5130,lng:126.5280,name:"Grabel Hotel Jeju"},
+  7:{lat:35.1587,lng:129.1604,name:"L7 Haeundae by Lotte"},
+  8:{lat:35.1587,lng:129.1604,name:"L7 Haeundae by Lotte"},
+  9:{lat:37.5500,lng:126.9198,name:"Shilla Stay Mapo Hongdae"},
+  10:{lat:37.5500,lng:126.9198,name:"Shilla Stay Mapo Hongdae"},
+  11:{lat:37.5500,lng:126.9198,name:"Shilla Stay Mapo Hongdae"},
+  12:{lat:37.5500,lng:126.9198,name:"Shilla Stay Mapo Hongdae"}
+};
 
 // Weather forecast via Open-Meteo (free, no API key)
 const CITY_COORDS={seoul:{lat:37.5665,lng:126.978},jeju:{lat:33.4996,lng:126.5312},busan:{lat:35.1796,lng:129.0756}};
@@ -843,6 +859,13 @@ function build(){
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OSM © CARTO',maxZoom:19}).addTo(m);
       mapInstances[day.num]=m;
       const pts=[];
+      // Add hotel marker
+      const htl=HOTELS[day.num];
+      if(htl){
+        const hIcon=L.divIcon({className:'',html:`<div class="hotel-icon">🏨</div>`,iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-18]});
+        L.marker([htl.lat,htl.lng],{icon:hIcon,zIndexOffset:1000}).addTo(m).bindPopup(`<b>🏨 ${htl.name}</b>`);
+        pts.push([htl.lat,htl.lng]);
+      }
       day.pois.forEach(p=>{
         const icon=L.divIcon({className:'',html:`<div class="n-icon">${p.n}</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
         L.marker([p.lat,p.lng],{icon}).addTo(m).bindPopup(`<b>${p.n}. ${p.name.replace(/<[^>]*>/g,'').replace(/🥾|🚴/g,'')}</b>`);
