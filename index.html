@@ -412,7 +412,7 @@ const TODOS=[
 ];
 
 let currentPage=0;
-const totalPages=DAYS.length+4; // cover + 12 days + todo + info + missing
+const totalPages=DAYS.length+5; // cover + 12 days + todo + food + info + missing
 const mapInstances={};
 const mapBounds={};
 // Hotel coordinates per day (looked up by day number)
@@ -672,10 +672,47 @@ function build(){
   todoPage.innerHTML=th;
   app.appendChild(todoPage);
 
+  // === FOOD PAGE ===
+  const foodBtn=document.createElement('button');
+  foodBtn.className='nav-btn';foodBtn.textContent='Food';foodBtn.style.borderBottom='2px solid #e67e22';
+  foodBtn.onclick=()=>goPage(DAYS.length+2);
+  nav.appendChild(foodBtn);
+
+  const FOODS=[
+    {id:"f_bibimbap",name:"Bibimbap (비빔밥)",desc:"Rice topped with vegetables, egg, meat & gochujang chili paste. Mix it all together."},
+    {id:"f_bbq",name:"Korean BBQ — Samgyeopsal / Galbi (삼겹살 / 갈비)",desc:"Pork belly or beef short ribs grilled at your table. Wrap in lettuce with garlic & ssamjang."},
+    {id:"f_tteokbokki",name:"Tteokbokki (떡볶이)",desc:"Chewy rice cakes in spicy-sweet red sauce. Best from street stalls."},
+    {id:"f_japchae",name:"Japchae (잡채)",desc:"Glass noodles stir-fried with vegetables and sesame oil. Sweet and savory."},
+    {id:"f_sundubu",name:"Sundubu-jjigae (순두부찌개)",desc:"Soft tofu stew, bubbling hot, with egg cracked in. Ultimate comfort food."},
+    {id:"f_kimbap",name:"Kimbap (김밥)",desc:"Korean rice rolls — like sushi but different. Cheap, portable, everywhere. Great grab-and-go."},
+    {id:"f_jjajang",name:"Jjajangmyeon (짜장면)",desc:"Black bean noodles. Korean-Chinese comfort food — thick, savory, slightly sweet."},
+    {id:"f_chimaek",name:"Chimaek — Fried Chicken + Beer (치맥)",desc:"Korean fried chicken with beer. Perfect at Han River or any pub."},
+    {id:"f_hotteok",name:"Hotteok (호떡)",desc:"Sweet pancakes filled with brown sugar, cinnamon & nuts. Best street food dessert."},
+    {id:"f_milmyeon",name:"Milmyeon (밀면)",desc:"Busan's cold wheat noodles in icy broth. Try it at Gukje Market."}
+  ];
+
+  const foodPage=document.createElement('div');
+  foodPage.className='page';
+  let fh=`<div class="todo-page"><h2>🍜 Korean Food Checklist</h2><p style="color:#888;font-size:13px;margin:0 16px 12px">Must-try dishes — check them off as you go!</p>`;
+  FOODS.forEach(item=>{
+    const checked=localStorage.getItem('todo_'+item.id)==='1';
+    fh+=`<div class="todo-item ${checked?'done':''}" id="todo-row-${item.id}">
+      <input type="checkbox" class="todo-cb" id="cb-${item.id}" ${checked?'checked':''} onchange="toggleTodo('${item.id}')">
+      <div class="todo-body">
+        <div class="todo-text">${item.name}</div>
+        <div class="todo-when" style="color:#aaa">${item.desc}</div>
+      </div>
+    </div>`;
+  });
+  fh+=`</div>`;
+  fh+=`<div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
+  foodPage.innerHTML=fh;
+  app.appendChild(foodPage);
+
   // === INFO PAGE ===
   const infoBtn=document.createElement('button');
   infoBtn.className='nav-btn';infoBtn.textContent='Info';infoBtn.style.borderBottom='2px solid #5dade2';
-  infoBtn.onclick=()=>goPage(DAYS.length+2);
+  infoBtn.onclick=()=>goPage(DAYS.length+3);
   nav.appendChild(infoBtn);
 
   const infoPage=document.createElement('div');
@@ -835,7 +872,7 @@ function build(){
   // === MISSING PAGE ===
   const misBtn=document.createElement('button');
   misBtn.className='nav-btn';misBtn.textContent='Missing?';misBtn.style.borderBottom='2px solid #f39c12';
-  misBtn.onclick=()=>goPage(DAYS.length+3);
+  misBtn.onclick=()=>goPage(DAYS.length+4);
   nav.appendChild(misBtn);
 
   const misPage=document.createElement('div');
