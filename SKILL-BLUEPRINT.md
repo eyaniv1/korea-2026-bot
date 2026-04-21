@@ -12,7 +12,7 @@ The skill produces three deliverables:
 A single `index.html` file hosted on GitHub Pages, serving as a mobile-first trip planner with:
 - **Cover page** — destination flag, family/group name, dates, route overview, local proverb
 - **Day pages** — one per day, swipeable, with three tabs each:
-  - **Itinerary tab** — interactive map (Leaflet/OpenStreetMap) with numbered POI markers + POI list with info modals, Google Maps links, activity badges, voucher links, and rainy day alternatives
+  - **Itinerary tab** — interactive map (Leaflet/OpenStreetMap) with numbered POI markers + POI list with info modals, Google Maps + Naver Map links, activity badges, voucher links, rainy day alternatives, and live weather forecast in header
   - **Hotel tab** — hotel name, confirmation voucher link, dates
   - **Transport tab** — flights, trains, car rental, taxi details, voucher links
 - **ToDo page** — persistent checkboxes (localStorage) for all reservations, bookings, pre-trip tasks with dates and booking links
@@ -137,6 +137,7 @@ A JavaScript module with 80-200+ points of interest including:
 | HTTP API | Express.js + CORS | Web app chat endpoint |
 | Hosting (bot) | Railway.app | Bot + API server hosting |
 | Source control | GitHub (public repo) | Code + voucher storage |
+| Weather | Open-Meteo API (free, no key) | Live daily forecast per day page |
 | Persistence | localStorage (browser) | ToDo checkboxes |
 
 ### Required API Keys / Accounts
@@ -222,7 +223,7 @@ project-root/
 - All external links use `target="_blank" rel="noopener"`
 - MutationObserver ensures dynamically created links get target="_blank"
 - Search links use DuckDuckGo (avoids iOS Safari Universal Links interception)
-- Google Maps links for POI locations (opens Maps app on mobile — desired behavior)
+- Google Maps + Naver Map links for POI locations (Naver Map is better for navigation in Korea — English UI, full transit directions)
 
 ### Chat Panel
 - Floating 💬 button, bottom-right, above nav bar
@@ -230,7 +231,7 @@ project-root/
 - Distinct darker background (#0a1628 with #3498db blue border) to differentiate from main app
 - Per-user sessions via random session ID stored in localStorage
 - Sends POST to Railway Express endpoint `/api/chat` with `X-Session-Id` header
-- Simple markdown rendering (bold, italic, line breaks)
+- Simple markdown rendering (bold, italic, line breaks) + auto-linkification of URLs in responses
 - Typing indicator while waiting for response
 - Chat messages persisted in localStorage (last 100) — survive app close/reopen
 - Every message shows timestamp (HH:MM) in bottom-right corner, persisted with history
@@ -256,7 +257,8 @@ project-root/
 | `clear alerts` | Reset alert history |
 | `clear chat` | Wipe visible chat history |
 | `help` | List all commands |
-| `clear my POIs` | Remove all custom POIs |
+| `I am NAME` | Set/change display name — merges with existing user if name matches |
+| `clear my POIs` | Remove only this user's custom POIs |
 | Everything else | Sent to Claude API for AI response |
 
 ### Architecture: Web Chat is Primary, Telegram is GPS Only
@@ -278,6 +280,14 @@ project-root/
 - `lastTab_<dayNum>` — last active tab per day
 - `chatOpen` — whether chat was open
 - `todo_<id>` — checkbox states
+
+### Live Weather Forecast
+- Open-Meteo API (free, no API key required)
+- Fetches daily forecast (weather code, min/max temp, rain probability) when navigating to a day page
+- Displays weather icon (WMO code mapping), temperature range in Celsius, and rain % (if >30%) in the day header
+- Cached in memory for 30 minutes per city+date to avoid excessive API calls
+- Maps each day to city coordinates (Seoul, Jeju, Busan) based on `nc` field
+- Forecasts available ~16 days ahead — shows real data as trip approaches
 
 ### App Restore Behavior
 - Body starts invisible (opacity:0), restores page/tab/chat state, then fades in (no flickering)
@@ -369,10 +379,15 @@ Full API documentation: see `API-Reference.md` / `API-Reference.pdf`
 
 ### Unified User System
 - Single `users` table in PostgreSQL: name, pushover_key, telegram_user_id, web_session_id, enabled, lat, lng
-- In-memory cache loaded from DB on startup
+- In-memory cache (Map keyed by lowercase name) loaded from DB on startup
+- All names normalized to lowercase at `registerUser()` entry point — prevents case-variant duplicates
+- `upsertUser()` uses case-insensitive lookup before insert (not `ON CONFLICT` which is case-sensitive)
+- Startup merge: detects and merges duplicate case-variant rows, preserving all fields
+- `I am NAME` command: merges web session with existing user if name matches (e.g., Telegram-registered user)
 - Any registration path creates/updates the same unified user record
 - Auto-registration on first interaction — order doesn't matter
 - `getUserByTelegramId()` uses String comparison for BIGINT compatibility
+- Recommended onboarding order: (1) web chat `I am NAME`, (2) `register pushover NAME KEY`, (3) Telegram live location, (4) `/alerts on`
 
 ### Pushover Integration
 - Short clean messages for Siri readout through AirPods
@@ -477,6 +492,11 @@ When the skill is invoked for a new trip, follow this sequence:
 - **Body opacity:0 on load** — prevents flickering during page/tab/chat state restore
 - **iOS Shortcut for POI from Google Maps** — Split Text approach (no regex) for extracting coordinates
 - **Timestamps on every chat message** — persisted with message history
+- **Naver Map links** — better English navigation in Korea than Google Maps (which lacks turn-by-turn directions) or Kakao Map (less English-friendly). Each POI has both Google + Naver links.
+- **Live weather in day headers** — Open-Meteo API, free, no key, shows icon + temp range + rain %. Fetched on navigation, cached 30 min.
+- **Clickable URLs in chat** — auto-linkification of URLs in bot responses via regex in `formatReply()`
+- **K-Ride over Kakao T** — English-first taxi app for foreigners with credit card payment and fixed fares
+- **Username normalization** — all names lowercase at entry point prevents case-variant duplicate user records
 
 ### What Didn't Work
 - **CSS translateX page system** — breaks Leaflet map rendering on non-visible pages
@@ -495,6 +515,9 @@ When the skill is invoked for a new trip, follow this sequence:
 - **Global alert queue** — showed everyone's alerts to everyone. Must be per-user (keyed by lowercase name).
 - **Global cooldown** — one user's alert blocked others. Cooldown must be per-user (already was in DB, but in-memory state was shared).
 - **Pushover app intercepts taps** — need "Open URLs automatically" enabled in Pushover settings for direct redirect to web app.
+- **Case-sensitive username duplicates** — PostgreSQL `ON CONFLICT (name)` is case-sensitive. "Jonathan" and "jonathan" create two rows. Normalize all names to lowercase at `registerUser()` entry point. Use case-insensitive lookup (`WHERE LOWER(name) = LOWER($1)`) in `upsertUser`. Merge duplicate rows on startup.
+- **DOMContentLoaded listener order** — `build()` creates cover page with `class='page active'`. If page restore runs before `build()`, build overwrites the restored page. `build()` must run first, then restore.
+- **Direct message sender showing session ID** — `@user` command sent `from: sessionId` instead of `from: localStorage.getItem('wanderguide_name')`. Always use registered name.
 - **iOS Shortcuts regex** — hangs on long URLs. Use Split Text approach instead of Match Text for URL parsing.
 - **Google Maps short URLs** — `maps.app.goo.gl` doesn't contain coordinates. Must expand URL first, then extract from `q=` parameter.
 - **Google Maps named places** — share URL has place name not coordinates. User must long-press to drop a pin for coordinate-based sharing.
