@@ -644,37 +644,10 @@ function build(){
     app.appendChild(page);
   });
 
-  // === TODO PAGE ===
-  const todoBtn=document.createElement('button');
-  todoBtn.className='nav-btn';todoBtn.textContent='To-Do';todoBtn.style.borderBottom='2px solid #2ecc71';
-  todoBtn.onclick=()=>goPage(DAYS.length+1);
-  nav.appendChild(todoBtn);
-
-  const todoPage=document.createElement('div');
-  todoPage.className='page';
-  let th=`<div class="todo-page"><h2>✅ Reservations & To-Do</h2>`;
-  TODOS.forEach(cat=>{
-    th+=`<div class="todo-cat">${cat.cat}</div>`;
-    cat.items.forEach(item=>{
-      const checked=localStorage.getItem('todo_'+item.id)==='1';
-      th+=`<div class="todo-item ${checked?'done':''}" id="todo-row-${item.id}">
-        <input type="checkbox" class="todo-cb" id="cb-${item.id}" ${checked?'checked':''} onchange="toggleTodo('${item.id}')">
-        <div class="todo-body">
-          <div class="todo-text">${item.text}</div>
-          <div class="todo-when">⏰ ${item.when}${item.link?` · <a href="${item.link}" target="_blank" rel="noopener" style="color:#5dade2">🔗 ${item.linkText||'Book'}</a>`:''}</div>
-        </div>
-      </div>`;
-    });
-  });
-  th+=`</div>`;
-  th+=`<div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
-  todoPage.innerHTML=th;
-  app.appendChild(todoPage);
-
   // === FOOD PAGE ===
   const foodBtn=document.createElement('button');
   foodBtn.className='nav-btn';foodBtn.textContent='Food';foodBtn.style.borderBottom='2px solid #e67e22';
-  foodBtn.onclick=()=>goPage(DAYS.length+2);
+  foodBtn.onclick=()=>goPage(DAYS.length+1);
   nav.appendChild(foodBtn);
 
   const FOODS=[
@@ -711,7 +684,7 @@ function build(){
   // === INFO PAGE ===
   const infoBtn=document.createElement('button');
   infoBtn.className='nav-btn';infoBtn.textContent='Info';infoBtn.style.borderBottom='2px solid #5dade2';
-  infoBtn.onclick=()=>goPage(DAYS.length+3);
+  infoBtn.onclick=()=>goPage(DAYS.length+2);
   nav.appendChild(infoBtn);
 
   const infoPage=document.createElement('div');
@@ -867,6 +840,33 @@ function build(){
   </div>
   <div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
   app.appendChild(infoPage);
+
+  // === TODO PAGE ===
+  const todoBtn=document.createElement('button');
+  todoBtn.className='nav-btn';todoBtn.textContent='To-Do';todoBtn.style.borderBottom='2px solid #2ecc71';
+  todoBtn.onclick=()=>goPage(DAYS.length+3);
+  nav.appendChild(todoBtn);
+
+  const todoPage=document.createElement('div');
+  todoPage.className='page';
+  let th=`<div class="todo-page"><h2>✅ Reservations & To-Do</h2>`;
+  TODOS.forEach(cat=>{
+    th+=`<div class="todo-cat">${cat.cat}</div>`;
+    cat.items.forEach(item=>{
+      const checked=localStorage.getItem('todo_'+item.id)==='1';
+      th+=`<div class="todo-item ${checked?'done':''}" id="todo-row-${item.id}">
+        <input type="checkbox" class="todo-cb" id="cb-${item.id}" ${checked?'checked':''} onchange="toggleTodo('${item.id}')">
+        <div class="todo-body">
+          <div class="todo-text">${item.text}</div>
+          <div class="todo-when">⏰ ${item.when}${item.link?` · <a href="${item.link}" target="_blank" rel="noopener" style="color:#5dade2">🔗 ${item.linkText||'Book'}</a>`:''}</div>
+        </div>
+      </div>`;
+    });
+  });
+  th+=`</div>`;
+  th+=`<div class="ios-spacer" style="width:100%;display:block" aria-hidden="true">&nbsp;</div>`;
+  todoPage.innerHTML=th;
+  app.appendChild(todoPage);
 
   // === MISSING PAGE ===
   const misBtn=document.createElement('button');
