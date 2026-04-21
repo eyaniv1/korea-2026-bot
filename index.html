@@ -27,10 +27,6 @@ body{padding-bottom:70px;overflow-x:hidden;opacity:0;transition:opacity 0.2s}
 /* Pages - show/hide */
 .page{display:none}
 .page.active{display:block}
-.page.slide-left{animation:slideLeft .3s ease}
-.page.slide-right{animation:slideRight .3s ease}
-@keyframes slideLeft{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes slideRight{from{transform:translateX(-60px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* Cover page */
 .cover{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 58px);text-align:center;padding:40px 20px;background:linear-gradient(160deg,#1a1a3e 0%,#0f0f1a 50%,#1a1a3e 100%)}
@@ -500,18 +496,12 @@ function showInfo(key,name){
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
 
-function goPage(idx,skipAnim){
+function goPage(idx){
   idx=Math.max(0,Math.min(totalPages-1,idx));
-  const dir=idx>currentPage?'slide-left':'slide-right';
-  const shouldAnim=!skipAnim&&idx!==currentPage;
   currentPage=idx;
   localStorage.setItem('lastPage',idx);
   document.querySelectorAll('.page').forEach((p,i)=>{
-    p.classList.remove('active','slide-left','slide-right');
-    if(i===idx){
-      p.classList.add('active');
-      if(shouldAnim){p.classList.add(dir);p.addEventListener('animationend',()=>p.classList.remove('slide-left','slide-right'),{once:true})}
-    }
+    p.classList.toggle('active',i===idx);
   });
   document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
   const btns=document.querySelectorAll('.nav-btn');
@@ -1455,7 +1445,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   restoreChatMessages();
   // Restore last viewed page (without animation)
   const lastPage=parseInt(localStorage.getItem('lastPage'));
-  if(lastPage&&lastPage>0)goPage(lastPage,true);
+  if(lastPage&&lastPage>0)goPage(lastPage);
   // Restore chat open state, or open if ?chat=1 in URL (from Pushover tap)
   if(window.location.search.includes('chat=1')||localStorage.getItem('chatOpen')==='1'){
     toggleChat();
