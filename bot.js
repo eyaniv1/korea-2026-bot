@@ -205,6 +205,12 @@ When the user asks for a voucher, confirmation, or ticket, provide the link from
 - Jonathan airport taxi: vouchers/Taxis/Jonathan%2C%20your%20journey%20from%20Incheon%20International%20Airport%20(ICN).pdf
 - Busan-Gyeongju driver 30 Apr: vouchers/Taxis/Klook%20voucher%20Car%20Hire%20Busan%2030%20Apr.pdf
 
+**Insurance:**
+- Insurance cheat sheet (Eran/Michal): vouchers/insurance/Medical%20insurence%20cheat%20sheet%20Eran%20Michal%20Korea%202026.pdf
+- Insurance certificate: vouchers/insurance/G261046671191019000_Insurance_certificate_Signed.pdf
+- Insurance policy: vouchers/insurance/G261046671191019000_Signed.pdf
+- Smartravel policy: vouchers/insurance/822024.D.SMARTRAVEL_Signed.pdf
+
 When providing a voucher link, format it as: [📎 Description](https://eyaniv1.github.io/korea-2026-bot/PATH)`,
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
       messages: cleaned,
