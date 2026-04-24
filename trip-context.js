@@ -102,7 +102,7 @@ Route flows east-to-west-to-south with no backtracking:
 - 9:15 AM: Haedong Yonggungsa Temple — seaside temple (45 min)
 - 10:00 AM: Private driver picks up at Yonggungsa → Gyeongju (~1 hr 15 min drive). Klook booked.
 - 11:30 AM: Bulguksa Temple (UNESCO) — free entry
-- 1:30 PM: Seokguram Grotto — forest walk up (3 km, 1-1.5 hrs, +382m, 5,000 won)
+- 1:30 PM: Seokguram Grotto (5,000 won) — ⚠️ The hiking trail from Bulguksa is closed for maintenance. Take shuttle bus or taxi from Bulguksa parking lot instead.
 - 5:30 PM: Hwangridan-gil — dinner
 - 6:30 PM: Daereungwon Tomb Complex + Chomseongdae Observatory (walk from Hwangridan-gil)
 - 7:15 PM: Wolji Pond — night reflections (after sunset ~6:55 PM, 3,000 won)
@@ -119,7 +119,7 @@ Route flows east-to-west-to-south with no backtracking:
 - **Hotel:** Shilla Stay Mapo Hongdae, Mapo, Seoul
 
 ### 2/5 (Sat) — Hike OR Icheon — Pick One
-- Option A: Bukhansan — Bukhansanseong trail (hard, 6.8 km, 3-4 hrs, +500m)
+- Option A: Bukhansan — Bukhansanseong trail (hard, 6.8 km, 3-4 hrs, +500m) — ⚠️ Trail may be closed for seasonal maintenance. Call +82-2-909-0497 morning of to confirm.
 - Option B: Inwangsan Fortress Wall (moderate, 3.5 km, 1.5-2 hrs, +236m)
 - Option C: Icheon Ceramic Festival
 - Evening: PC Bang (Korean gaming cafe) in Hongdae
@@ -130,10 +130,11 @@ Route flows east-to-west-to-south with no backtracking:
 ### 3/5 (Sun) — DMZ + Palace + Farewell
 - Morning: DMZ Tour — half day (Klook, booked. Bring passport!)
 - PM: Gyeongbokgung Palace
-- PM: Bukchon Hanok Village
+- PM: Bukchon Hanok Village — ⚠️ Tourist access 10:00 AM – 5:00 PM ONLY in main area. 100,000 KRW fine outside these hours.
 - Late PM: Gwangjang Market — street food
 - Evening: Optional NANTA Show — Myeongdong or Hongdae (~90 min, ~40,000-60,000 won)
 - Evening: Han River — chimaek & farewell sunset
+- 8:30 PM: Optional — Han River Drone Light Show (free, ~15 min, runs Apr 10 – Jun 5 at Yeouido/Ttukseom/Jamsil parks). Banpo Rainbow Fountain at 9:00 PM nearby.
 - **Hotel:** Shilla Stay Mapo Hongdae
 
 ### 4/5 (Mon) — Depart
