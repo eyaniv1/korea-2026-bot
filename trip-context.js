@@ -31,16 +31,16 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - **Hotel:** Amid Hotel Seoul, Jongno/Insadong
 
 ### 24/4 (Fri) — Seoul Culture
+Route flows east-to-west-to-south with no backtracking:
 - Morning: Naksan Park — city views
-- AM: Ihwa Mural Village
-- Lunch: Myeongdong Kyoja — Michelin noodles (walk-in, expect queue)
-- PM: Deoksugung Palace — stone wall walk (optional, on the way)
-- PM: Seochon — cafes, galleries
-- PM: Ssamjigil — Insadong crafts
+- AM: Ihwa Mural Village — street art (right next to Naksan, walk down)
+- Lunch: Ssamjigil / Insadong — crafts + street food lunch
 - PM: Themed Cafe (Poop Cafe or animal cafe in Insadong area)
-- Evening: Jogyesa Temple — lotus lanterns (up for Buddha's Birthday season)
+- PM: Jogyesa Temple — lotus lanterns (up for Buddha's Birthday season)
+- PM: Seochon — cafes, galleries (walk west)
+- PM: Deoksugung Palace — stone wall walk (on the way south)
 - Evening: Abijou Clinic — Korean Aqua Peel facial (walk-in, ~30 min, ~$25-75)
-- Dinner: Maple Tree House (Itaewon) — Korean BBQ. Call +82 2-790-7977
+- Dinner: Maple Tree House (Samcheong-dong) — Korean BBQ. Call +82 2-730-7461
 - Night option: DDP (Dongdaemun Design Plaza) — stunning at night with LED rose garden
 - **Hotel:** Amid Hotel Seoul
 
@@ -60,15 +60,22 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 ### 26/4 (Sun) — Fly to Jeju
 - Morning flight Gimpo → Jeju (~1 hr), Korean Air. Pick up Alamo rental car at Jeju Airport.
 - Optional: Jeju Loveland — quirky sculpture park (~30 min, 9,000 won)
-- PM: Saryeoni Forest Trail (10 km, 2-3 hrs, +222m) — ⚠️ May be closed until May 15, check visitjeju.net
+- PM — Pick one hike:
+  - Option A: Saryeoni Forest Trail (flat, relaxing, 10 km, 2-3 hrs, +222m) — ⚠️ May be closed until May 15, check visitjeju.net
+  - Option B: Hallasan — Eoseungsaengak Trail (mountain hike, 2.1 km, 1-1.5 hrs, +190m) — stunning views of Jeju City and Hallasan peaks
+- Optional afternoon activities (especially if choosing shorter Option B):
+  - Manjanggul Lava Tube — UNESCO volcanic cave (~40 min, 4,000 won)
+  - Jeju Maze Park — hedge maze, mini-golf, cats (~1 hr, 3,300 won)
+  - Jeju Folk Village Museum — 100+ traditional buildings (~1.5 hrs, 11,000 won)
+  - Hallim Park — 9 themed gardens + lava caves (~1.5 hrs, 12,000 won)
 - Dinner: Dombedon — Michelin black pork BBQ. Call +82 64-753-0008
 - Evening: Jeju Dongmun Market — food market walk (near hotel)
 - **Hotel:** Grabel Hotel Jeju, Jeju City
 
 ### 27/4 (Mon) — Jeju E-Bike + Sunrise Peak
 - Leave hotel by 7:00 AM (1 hr drive to Seongsan)
-- 8:00 AM: Early ferry from Seongsan Port to Udo Island (bring passport!)
-- 8:30 AM: E-bike Udo Island — rent at Cheonjin Port on arrival (15 km loop, 1.5-2 hrs)
+- 8:00 AM: Seongsan Port — early ferry to Udo Island. Bring passport! Ferry runs every 30 min (~10,500 won round trip). Park at multi-story car park (~8,000 won/day).
+- 8:30 AM: E-bike Udo Island — rent at Cheonjin Port on arrival (~15,000 won/person, 15 km loop, 1.5-2 hrs). Try the peanut ice cream!
 - ~12:00 PM: Seongsan Ilchulbong hike after ferry back (1.8 km, 40-60 min, +142m, 5,000 won)
 - **Hotel:** Grabel Hotel Jeju
 
@@ -124,8 +131,8 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - Morning: DMZ Tour — half day (Klook, booked. Bring passport!)
 - PM: Gyeongbokgung Palace
 - PM: Bukchon Hanok Village
-- Evening: Optional NANTA Show — Myeongdong or Hongdae (~90 min, ~40,000-60,000 won)
 - Late PM: Gwangjang Market — street food
+- Evening: Optional NANTA Show — Myeongdong or Hongdae (~90 min, ~40,000-60,000 won)
 - Evening: Han River — chimaek & farewell sunset
 - **Hotel:** Shilla Stay Mapo Hongdae
 
@@ -142,9 +149,9 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 - **Seoul 2nd (1-4 May):** Shilla Stay Mapo Hongdae, Mapo
 
 ## Transport Summary
-- Seoul: Subway + Kakao T taxi app. T-money card.
+- Seoul: Subway + K-Ride taxi app (English, credit card). T-money card for transit.
 - Jeju: Alamo rental car (26-29 Apr). International Driving Permit required.
-- Busan: Kakao T taxi. Private driver for Gyeongju day trip (30 Apr).
+- Busan: K-Ride taxi. Private driver for Gyeongju day trip (30 Apr).
 - KTX Busan → Seoul on 1/5.
 - Internal flights: Korean Air (Gimpo→Jeju 26/4, Jeju→Busan 29/4)
 
@@ -169,9 +176,9 @@ Use relevant emojis sparingly to keep messages scannable on mobile.
 ## Practical Info
 - Currency: Korean Won (KRW). ~1 USD ≈ 1,350 KRW
 - Tipping: Not customary in Korea
-- Taxi app: Kakao T
-- Maps: Kakao Map (better than Google Maps in Korea)
-- Translator: Papago app
+- Taxi app: K-Ride (English version of Kakao T, fixed fares, credit card)
+- Maps: Naver Map (best English navigation in Korea), also have Kakao Map as backup
+- Translator: Google Translate (camera mode works well for Korean signs/menus)
 - Embassy of Israel in Seoul: +82-2-3210-8500
 
 ## Communication Style
