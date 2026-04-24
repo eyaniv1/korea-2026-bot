@@ -41,7 +41,7 @@ Route flows east-to-west-to-south with no backtracking:
 - PM: Deoksugung Palace — stone wall walk (on the way south)
 - Evening: Abijou Clinic — Korean Aqua Peel facial (walk-in, ~30 min, ~$25-75)
 - Dinner: Maple Tree House (Samcheong-dong) — Korean BBQ. Call +82 2-730-7461
-- Night option: DDP (Dongdaemun Design Plaza) — stunning at night with LED rose garden
+- Night option: DDP (Dongdaemun Design Plaza) — stunning Zaha Hadid building, beautifully lit at night (NOTE: the LED rose garden closed in 2019, it no longer exists)
 - **Hotel:** Amid Hotel Seoul
 
 ### 25/4 (Sat) — Suwon Fortress + Tower + Jungsik
