@@ -23,13 +23,13 @@
 - **Morning:** **Naksan Park** — city views
 - **AM:** **Ihwa Mural Village** — street art
 - **Lunch:** **Ssamjigil** — Insadong crafts + street food lunch
-- **PM:** 🐱 **Themed Cafe** — Poop Cafe or animal cafe (Insadong)
-- **PM:** **Jogyesa Temple** — lotus lanterns
+- **PM:** 🐱 **Themed Cafe** — Malddeong Cafe or animal cafe (Insadong)
+- **PM:** **Jogyesa Temple** — lotus lanterns (Lotus Lantern Festival Apr 22 – May 24!)
 - **PM:** **Seochon** — cafes, galleries
 - **PM:** 🏛️ **Deoksugung Palace** — stone wall walk (on the way south)
 - **Evening:** 💆 **Abijou Clinic** — Korean Aqua Peel facial
 - **Dinner:** **Maple Tree House** (Samcheong-dong) — Korean BBQ
-- **Night option:** ✨ **DDP at night** — Zaha Hadid landmark + LED rose garden
+- **Night option:** ✨ **DDP at night** — Zaha Hadid landmark, beautifully lit
 
 **Hotel:** Amid Hotel Seoul · Jongno/Insadong
 **🌧️ Rain plan:** National Museum of Korea (free, world-class), COEX Mall underground, or Lotte World indoor theme park.
@@ -61,7 +61,7 @@
   - 🥾 **Option A: Saryeoni Forest Trail** (flat, relaxing) | 10 km · 2–3 hrs · +222m
   - 🥾 **Option B: Hallasan — Eoseungsaengak Trail** | 2.1 km · 1–1.5 hrs · +190m
 - **Optional afternoon activities (especially with Option B):**
-  - 🌋 **Manjanggul Lava Tube** — UNESCO volcanic cave (~40 min)
+  - 🌋 **Manjanggul Lava Tube** — UNESCO volcanic cave (~40 min) ⚠️ *May be closed for repairs — check before going*
   - 🐱 **Jeju Maze Park** — hedge maze, mini-golf, cats (~1 hr)
   - 🏘️ **Jeju Folk Village Museum** — 100+ traditional buildings (~1.5 hrs)
   - 🌺 **Hallim Park** — 9 themed gardens + lava caves (~1.5 hrs)
@@ -116,7 +116,7 @@
 
 - **9:15 AM:** **Yonggungsa Temple** — seaside (45 min)
 - **11:30 AM:** **Bulguksa Temple** (UNESCO) — Gyeongju
-- **1:30 PM:** 🥾 **Seokguram Grotto** — forest walk | 3 km · 1–1.5 hrs · +382m
+- **1:30 PM:** **Seokguram Grotto** (5,000 won) ⚠️ *Hiking trail from Bulguksa closed for maintenance — take shuttle bus or taxi instead*
 - **5:30 PM:** **Hwangridan-gil** — dinner
 - **6:30 PM:** 🪦 **Daereungwon Tomb Complex** — Silla royal burial mounds + Chomseongdae Observatory
 - **7:15 PM:** **Wolji Pond** — night reflections (after sunset)
@@ -144,9 +144,9 @@
 ## Day 10 — May 2 (Sat) | Hike OR Icheon — Pick One
 
 - **Morning — Pick one:**
-  - 🥾 **Option A: Bukhansan — Bukhansanseong** (hard) | 6.8 km · 3–4 hrs · +500m
+  - 🥾 **Option A: Bukhansan — Bukhansanseong** (hard) | 6.8 km · 3–4 hrs · +500m ⚠️ *Trail may be closed seasonally — call +82-2-909-0497 morning of*
   - 🥾 **Option B: Inwangsan Fortress Wall** (moderate) | 3.5 km · 1.5–2 hrs · +236m
-  - 🏺 **Option C: Icheon Ceramic Festival**
+  - 🏺 **Option C: Icheon Ceramic Festival** (discount weekend May 2-3!)
 - **Evening:** 🎮 **PC Bang** — Korean gaming cafe in Hongdae
 - **Late Night:** 🏪 Convenience store ramyeon + banana milk at GS25
 - **Night option:** 🛍️ **Dongdaemun Night Shopping** (open until 5 AM)
@@ -158,12 +158,13 @@
 
 ## Day 11 — May 3 (Sun) | DMZ + Palace + Farewell
 
-- **Morning:** 🪖 **DMZ Tour** — half day
-- **PM:** **Gyeongbokgung Palace**
-- **PM:** **Bukchon Hanok Village**
+- **Morning:** 🪖 **DMZ Tour** — half day (standard tour — note: JSA/Panmunjom is closed indefinitely)
+- **PM:** **Gyeongbokgung Palace** — guard changing ceremony at 10:00 & 14:00
+- **PM:** **Bukchon Hanok Village** ⚠️ *Tourist access 10 AM – 5 PM ONLY. 100,000 KRW fine outside these hours!*
 - **Late PM:** **Gwangjang Market** — street food
 - **Evening:** 🎭 **Optional: NANTA Show** — Myeongdong or Hongdae (~90 min)
 - **Evening:** **Han River** — chimaek & farewell sunset
+- **8:30 PM:** 🎆 **Optional: Han River Drone Light Show** (free, ~15 min, Yeouido/Ttukseom/Jamsil)
 
 **Hotel:** Shilla Stay Mapo Hongdae
 **🌧️ Rain plan:** DMZ runs rain or shine. Afternoon: National Museum of Korea (free), Dongdaemun shopping malls, or jjimjilbang (Dragon Hill Spa).
@@ -189,7 +190,7 @@
 | 4 | Option B: Hallasan Eoseungsaengak (Jeju) | 2.1 km | 1–1.5 hrs | +190m |
 | 5 | Seongsan Ilchulbong (Jeju) | 1.8 km | 40–60 min | +142m |
 | 6 | Olle Trail Section 7 (Jeju) | 17.6 km / partial | 5–6 hrs | +288m |
-| 8 | Seokguram Grotto (Gyeongju) | 3 km | 1–1.5 hrs | +382m |
+| 8 | Seokguram Grotto (Gyeongju) | Bus/taxi (trail closed) | — | — |
 | 10 | Option A: Bukhansan (Seoul) | 6.8 km | 3–4 hrs | +500m |
 | 10 | Option B: Inwangsan (Seoul) | 3.5 km | 1.5–2 hrs | +236m |
 
@@ -219,6 +220,16 @@
 
 ---
 
+### ⚠️ Important Warnings
+
+- **Bukchon Hanok Village** — Tourist access 10 AM – 5 PM only. 100,000 KRW fine outside hours.
+- **Seokguram Grotto** — Hiking trail from Bulguksa closed for maintenance. Take bus/taxi.
+- **Bukhansan** — Trail may be closed seasonally. Call +82-2-909-0497 to confirm.
+- **DMZ JSA** — Joint Security Area (Panmunjom) closed indefinitely. Standard DMZ tour operates normally.
+- **Manjanggul Lava Tube** — Closed for repairs since Dec 2023. May or may not be open by Apr 26.
+
+---
+
 ### 🍜 Korean Food Checklist
 
 - [ ] Bibimbap (비빔밥)
@@ -234,4 +245,15 @@
 
 ---
 
-*Updated April 2026 | Korea Trip Companion App*
+### 📱 Essential Apps
+
+- **K-Ride** — English taxi hailing, fixed fares, credit card
+- **Naver Map** — Best English navigation in Korea
+- **Kakao Map** — Backup navigation
+- **Google Translate** — Camera mode for Korean signs/menus
+- **Korail** — KTX train booking
+- **Catch Table** — Restaurant reservations (needed for Jungsik)
+
+---
+
+*Updated April 22, 2026 | Korea Trip Companion App*
